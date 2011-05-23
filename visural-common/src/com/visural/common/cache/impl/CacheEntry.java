@@ -1,0 +1,63 @@
+/*
+ *  Copyright 2010 Richard Nichols.
+ * 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *  under the License.
+ */
+
+package com.visural.common.cache.impl;
+
+/**
+ * Stateless wrapper for a cached result, which keeps created and ttl data.
+ * 
+ * @version $Id: CacheEntry.java 38 2010-05-24 11:39:51Z tibes80@gmail.com $
+ * @author Richard Nichols
+ */
+public class CacheEntry {
+    private final long created;
+    private final long ttl;
+    private final Object result;
+
+    public CacheEntry(long ttl, Object result) {
+        this.created = System.currentTimeMillis();
+        this.ttl = ttl;
+        this.result = result;
+    }
+
+    public long getCreated() {
+        return created;
+    }
+
+    public Object getResult() {
+        return result;
+    }
+
+    public long getTtl() {
+        return ttl;
+    }
+
+    /**
+     * Returns whether the data has passed its expiry. Note that the cache will
+     * not return data which is expired. This is for internal use.
+     * @return
+     */
+    public boolean isExpired() {
+        return (ttl > 0 && System.currentTimeMillis() > created+ttl);
+    }
+
+    @Override
+    public String toString() {
+        return "[expired: "+isExpired()+", "+result+"]";
+}
+
+}

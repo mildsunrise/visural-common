@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- You may freely edit this file. See commented blocks below for -->
+<!-- some examples of how to customize the build. -->
+<!-- (If you delete it and reopen the project it will be recreated.) -->
+<!-- By default, only the Clean and Build commands use this build script. -->
+<!-- Commands such as Run, Debug, and Test only use this build script if -->
+<!-- the Compile on Save feature is turned off for the project. -->
+<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
+<!-- in the project's Project Properties dialog box.-->
+<project name="visural-common" default="default" basedir=".">
+    <description>Builds, tests, and runs the project visural-commons.</description>
+    <import file="nbproject/build-impl.xml"/>
+
+    <target name="package_for_release" depends="jar,javadoc,mavenise">
+        <mkdir dir="build/release"/>
+        <copy file="${dist.jar}" todir="build/release/"/>
+        <copy file="licence.txt" todir="build/release/"/>
+        <copy file="COPYING" todir="build/release/"/>
+        <mkdir dir="build/release/doc"/>
+        <copy todir="build/release/doc">
+            <fileset dir="dist/javadoc" includes="**"/>
+        </copy>
+        <mkdir dir="build/release/src"/>
+        <copy todir="build/release/src">
+            <fileset dir="src" includes="**"/>
+        </copy>
+        <mkdir dir="build/release/test"/>
+        <copy todir="build/release/test">
+            <fileset dir="test" includes="**"/>
+        </copy>
+        <jar basedir="build/release/src" includes="**/*" destfile="build/release/${ant.project.name}-${project.version}-sources.jar"/>
+        <jar basedir="build/release/doc" includes="**/*" destfile="build/release/${ant.project.name}-${project.version}-javadoc.jar"/>
+        <zip basedir="build/release/" includes="**" destfile="dist/${ant.project.name}-${project.version}.zip"/>
+    </target>
+
+    <target name="-javadoc-build">
+        <mkdir dir="${dist.javadoc.dir}"/>
+        <javadoc additionalparam="${javadoc.additionalparam}" author="${javadoc.author}" charset="UTF-8" destdir="${dist.javadoc.dir}" docencoding="UTF-8" encoding="${javadoc.encoding.used}" failonerror="true" noindex="${javadoc.noindex}" nonavbar="${javadoc.nonavbar}" notree="${javadoc.notree}" private="${javadoc.private}" source="${javac.source}" splitindex="${javadoc.splitindex}" use="${javadoc.use}" useexternalfile="true" version="${javadoc.version}" windowtitle="${javadoc.windowtitle}">
+            <classpath>
+                <path path="${javac.classpath}"/>
+            </classpath>
+            <fileset dir="${src.dir}" excludes="${excludes}" includes="${includes}">
+                <filename name="**/*.java"/>
+            </fileset>
+            <fileset dir="${build.generated.sources.dir}" erroronmissingdir="false">
+                <include name="**/*.java"/>
+            </fileset>
+            <doclet name="com.visural.doclets.markdown.standard.Standard" path="lib/MarkdownDoclet-v2.jar">
+            </doclet>
+        </javadoc>
+    </target>
+
+    <target name="-pre-init">
+        <property file="version.properties"/>
+        <property name="dist.jar" value="dist/${ant.project.name}-${project.version}.jar"/>
+    </target>
+
+    <target name="mavenise">
+        <property name="maven.path" value="maven/com/visural/${ant.project.name}/"/>
+        <mkdir dir="${maven.path}/${project.version}"/>
+        <tstamp>
+            <format property="maven.time" pattern="yyyyMMddHHmmss" />
+        </tstamp>
+        <copy file="${dist.jar}" todir="${maven.path}/${project.version}/"/>
+        <copy file="basepom.xml" tofile="${maven.path}/${project.version}/${ant.project.name}-${project.version}.pom"/>
+        <!--<copy file="basemeta.xml" tofile="${maven.path}/maven-metadata-local.xml"/>-->
+        <replaceregexp match="PVERSION" replace="${project.version}" flags="g">
+            <fileset dir="${maven.path}/">
+                <include name="${project.version}/*.pom"/>
+                <include name="maven-metadata-local.xml"/>
+            </fileset>
+        </replaceregexp>
+        <replaceregexp match="PNAME" replace="${ant.project.name}" flags="g">
+            <fileset dir="${maven.path}/">
+                <include name="${project.version}/*.pom"/>
+                <include name="maven-metadata-local.xml"/>
+            </fileset>
+        </replaceregexp>
+        <replaceregexp match="PUPDATED" replace="${maven.time}" flags="g">
+            <fileset dir="${maven.path}/">
+                <include name="${project.version}/*.pom"/>
+                <include name="maven-metadata-local.xml"/>
+            </fileset>
+        </replaceregexp>
+        <checksum file="${maven.path}/${project.version}/${ant.project.name}-${project.version}.jar" forceOverwrite="yes" algorithm="MD5" fileext=".md5"/>
+    </target>
+    
+    <!--
+
+    There exist several targets which are by default empty and which can be 
+    used for execution of your tasks. These targets are usually executed 
+    before and after some main targets. They are: 
+
+      -pre-init:                 called before initialization of project properties
+      -post-init:                called after initialization of project properties
+      -pre-compile:              called before javac compilation
+      -post-compile:             called after javac compilation
+      -pre-compile-single:       called before javac compilation of single file
+      -post-compile-single:      called after javac compilation of single file
+      -pre-compile-test:         called before javac compilation of JUnit tests
+      -post-compile-test:        called after javac compilation of JUnit tests
+      -pre-compile-test-single:  called before javac compilation of single JUnit test
+      -post-compile-test-single: called after javac compilation of single JUunit test
+      -pre-jar:                  called before JAR building
+      -post-jar:                 called after JAR building
+      -post-clean:               called after cleaning build products
+
+    (Targets beginning with '-' are not intended to be called on their own.)
+
+    Example of inserting an obfuscator after compilation could look like this:
+
+        <target name="-post-compile">
+            <obfuscate>
+                <fileset dir="${build.classes.dir}"/>
+            </obfuscate>
+        </target>
+
+    For list of available properties check the imported 
+    nbproject/build-impl.xml file. 
+
+
+    Another way to customize the build is by overriding existing main targets.
+    The targets of interest are: 
+
+      -init-macrodef-javac:     defines macro for javac compilation
+      -init-macrodef-junit:     defines macro for junit execution
+      -init-macrodef-debug:     defines macro for class debugging
+      -init-macrodef-java:      defines macro for class execution
+      -do-jar-with-manifest:    JAR building (if you are using a manifest)
+      -do-jar-without-manifest: JAR building (if you are not using a manifest)
+      run:                      execution of project 
+      -javadoc-build:           Javadoc generation
+      test-report:              JUnit report generation
+
+    An example of overriding the target for project execution could look like this:
+
+        <target name="run" depends="visural-commons-impl.jar">
+            <exec dir="bin" executable="launcher.exe">
+                <arg file="${dist.jar}"/>
+            </exec>
+        </target>
+
+    Notice that the overridden target depends on the jar target and not only on 
+    the compile target as the regular run target does. Again, for a list of available 
+    properties which you can use, check the target you are overriding in the
+    nbproject/build-impl.xml file. 
+
+    -->
+</project>
