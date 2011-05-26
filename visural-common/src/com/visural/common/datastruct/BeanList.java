@@ -99,7 +99,6 @@ public class BeanList<T> implements List<T>, Serializable {
 
     private BeanList<T> sort(final String... properties) {
         Collections.sort(list, new Comparator<T>() {
-            @Override
             public int compare(T o1, T o2) {
                 try {
                     for (int n = 0; n < properties.length; n++) {
