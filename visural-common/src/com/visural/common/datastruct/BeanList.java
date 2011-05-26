@@ -99,6 +99,7 @@ public class BeanList<T> implements List<T>, Serializable {
 
     private BeanList<T> sort(final String... properties) {
         Collections.sort(list, new Comparator<T>() {
+            @Override
             public int compare(T o1, T o2) {
                 try {
                     for (int n = 0; n < properties.length; n++) {
@@ -109,12 +110,16 @@ public class BeanList<T> implements List<T>, Serializable {
                             property = property.substring(1);
                         }
                         Class type = BeanUtil.getPropertyType(o1, property);
-                        Method getter = BeanUtil.findGetter(o1.getClass(), property);
-                        if (getter == null) {
-                            throw new IllegalStateException("Property '"+property+"' can not be resolved.");
+                        Method getter1 = BeanUtil.findGetter(o1.getClass(), property);
+                        if (getter1 == null) {
+                            throw new IllegalStateException(String.format("Property '%s' on class '%s' can not be resolved.", property, o1.getClass().getName()));
                         }
-                        Object val1 = getter.invoke(o1);
-                        Object val2 = getter.invoke(o2);
+                        Method getter2 = BeanUtil.findGetter(o2.getClass(), property);
+                        if (getter2 == null) {
+                            throw new IllegalStateException(String.format("Property '%s' on class '%s' can not be resolved.", property, o2.getClass().getName()));
+                        }
+                        Object val1 = getter1.invoke(o1);
+                        Object val2 = getter2.invoke(o2);
 
                         int result = 0;
 

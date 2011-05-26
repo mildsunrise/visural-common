@@ -111,7 +111,59 @@ public class BeanListTest extends TestCase {
         public String toString() {
             return String.format("%s %s %s\n", s1, s2, s3);
         }
+    }
+    
+    ////////////////////////////////////////////////
+    
+    public abstract static class Parent {
+        private String parent = "p";
 
+        public String getParent() {
+            return parent;
+        }
 
+        public void setParent(String parent) {
+            this.parent = parent;
+        }
+        
+        public abstract String getAbstract();
+    }
+    
+    public class Child1 extends Parent {
+
+        private String abstractStr = Double.valueOf(Math.random()).toString();
+        
+        @Override
+        public String getAbstract() {
+            return abstractStr;
+        }        
+    }    
+    
+    public class Child2 extends Parent {
+
+        private String abstractStr = Double.valueOf(Math.random()).toString();
+        
+        @Override
+        public String getAbstract() {
+            return abstractStr+20;
+        }        
+    }
+    
+    /**
+     * A test which ensures that beans which descend from a common parent can 
+     * be sorted on an abstract parent property even 
+     * when different implementations are provided.
+     * @throws Exception 
+     */
+    public void testAbstractBean() throws Exception {       
+        BeanList<Parent> bl = new BeanList<BeanListTest.Parent>(new ArrayList<Parent>(), 4);
+        for (int n = 0; n < 100; n++) {
+            if (Math.random() < 0.5d) {
+                bl.add(new Child1());
+            } else {
+                bl.add(new Child2());
+            }
+        }
+        bl.sortByProperties("abstract");
     }
 }
