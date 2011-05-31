@@ -117,6 +117,20 @@ public class Function {
         return result;
     }
 
+    public static <T extends Comparable> T min(T... vals) {
+        if (vals == null || vals.length == 0) {
+            return null;
+        }
+        T result = vals[0];
+        for (T next : vals) {
+            if (next.compareTo(result) < 0) {
+                result = next;
+            }
+        }
+        return result;
+    }
+
+    
     /**
      * Returns the minimum value in the set based on the comparator provided
      * @param <T>
@@ -132,6 +146,19 @@ public class Function {
         T result = vals[0];
         for (T next : vals) {
             if (comparator.compare(next, result) > 0) {
+                result = next;
+            }
+        }
+        return result;
+    }    
+    
+    public static <T extends Comparable> T max(T... vals) {
+        if (vals == null || vals.length == 0) {
+            return null;
+        }
+        T result = vals[0];
+        for (T next : vals) {
+            if (next.compareTo(result) > 0) {
                 result = next;
             }
         }
