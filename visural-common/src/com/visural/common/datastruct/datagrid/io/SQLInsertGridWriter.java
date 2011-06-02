@@ -56,7 +56,7 @@ public class SQLInsertGridWriter implements DataGridWriter {
         return bResult;
     }
 
-    private String getDMLStringForField(FieldType ft, Object o) {
+    private String getDMLStringForField(FieldType ft, Object o) { //NOPMD
         String sObjConverted = "";
         /*                                String sFieldClass = oF.getClass().getName();
         if (sFieldClass.compareTo("any") == 0)
@@ -97,8 +97,6 @@ public class SQLInsertGridWriter implements DataGridWriter {
                 throw new DataException("The table being written fails required field validation.");
             }
 
-            String sLastUpdateStatment = "";
-
             try {
                 OutputStreamWriter osw = new OutputStreamWriter(os, this.OUT_CHARSET);
 
@@ -127,7 +125,6 @@ public class SQLInsertGridWriter implements DataGridWriter {
                         }
 
                         String sInsert = "INSERT INTO " + sTable + " (" + sInsertList + ") VALUES (" + sDataList + ")";
-                        sLastUpdateStatment = sInsert;
                         osw.write(sInsert + "\n");
                     }
                 }

@@ -118,7 +118,7 @@ public class ClassFinder {
             {
                 return clazz;
             }
-        } catch (Throwable t) {
+        } catch (Throwable t) { //NOPMD
             // sometimes we get some unloadable class references when doing a
             // deep classpath scan with no filtering - so best to 
             // ignore any lookup errors

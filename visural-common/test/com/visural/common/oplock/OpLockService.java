@@ -23,6 +23,7 @@ import com.visural.common.cache.KeyIgnore;
  * @version $Id: OpLockService.java 57 2010-05-31 03:51:03Z tibes80@gmail.com $
  * @author Richard Nichols
  */
+@SuppressWarnings("PMD")
 public class OpLockService {
     @OpLock
     public void testService(@KeyIgnore int n) {

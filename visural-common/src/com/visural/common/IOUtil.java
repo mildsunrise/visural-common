@@ -222,7 +222,7 @@ public class IOUtil {
             try {
                 writer.close();
             } catch (IOException ex) {
-                // TODO: log
+                Logger.getLogger(IOUtil.class.getName()).log(Level.SEVERE, "Could not close stream in stringToFile()", ex);
             }
         }
     }
@@ -328,10 +328,8 @@ public class IOUtil {
     public static void zipFolder(String destinationZipFilename, String folderToZip, boolean recurseSubFolders) throws IOException, FileNotFoundException {
         // check input
         File fOut = new File(destinationZipFilename);
-        if (fOut.exists()) {
-            if (!fOut.delete()) {
-                throw new IOException("ZIP file " + destinationZipFilename + " already exists and can not be overwritten.");
-            }
+        if (fOut.exists() && !fOut.delete()) {
+            throw new IOException("ZIP file " + destinationZipFilename + " already exists and can not be overwritten.");
         }
         File fFolder = new File(folderToZip);
         if (!fFolder.exists() || !fFolder.isDirectory()) {
@@ -389,16 +387,14 @@ public class IOUtil {
      */
     public static void nukeFolder(String folder) throws IOException {
         File f = new File(folder);
-        if (f.exists()) {
-            if (f.isDirectory()) {
-                File[] fa = f.listFiles();
-                for (int n = 0; n < fa.length; n++) {
-                    if (fa[n].isDirectory()) {
-                        nukeFolder(fa[n].getPath());
-                    } else {
-                        if (!fa[n].delete()) {
-                            throw new IOException("Failed nuking " + folder + " - could not delete file '" + f.getPath() + "'");
-                        }
+        if (f.exists() && f.isDirectory()) {
+            File[] fa = f.listFiles();
+            for (int n = 0; n < fa.length; n++) {
+                if (fa[n].isDirectory()) {
+                    nukeFolder(fa[n].getPath());
+                } else {
+                    if (!fa[n].delete()) {
+                        throw new IOException("Failed nuking " + folder + " - could not delete file '" + f.getPath() + "'");
                     }
                 }
             }

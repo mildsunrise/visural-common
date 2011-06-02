@@ -30,6 +30,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * CSV file parser
@@ -38,6 +40,8 @@ import java.util.ArrayList;
  * @author Richard Nichols
  */
 public class CSVGridGenerator implements DataGridGenerator {
+    
+    private static final Logger log = Logger.getLogger(CSVGridGenerator.class.getName());
 
     public static final String TEXT_FORMAT_UTF8 = "UTF8";
     private boolean bProcessedOk = false;
@@ -54,11 +58,11 @@ public class CSVGridGenerator implements DataGridGenerator {
      * @throws DataException 
      */
     public CSVGridGenerator(String sFilename) throws DataException {
-        this(sFilename, true, ",", "\"", "");
+        this(sFilename, true, ",", "\"", null);
     }
 
     public CSVGridGenerator(String gridName, InputStream is) throws DataException {
-        init(gridName, is, true, ",", "\"", "");
+        init(gridName, is, true, ",", "\"", null);
     }
 
     /**
@@ -109,7 +113,7 @@ public class CSVGridGenerator implements DataGridGenerator {
         this.sColQuote = sColQuote;
 
         try {
-            ArrayList alFile = readRows(is);
+            ArrayList alFile = readRows(is, sTextFormat);
             conformRows(alFile);
 
             // now move into required format for DataGridGenerator
@@ -145,7 +149,6 @@ public class CSVGridGenerator implements DataGridGenerator {
                 alRows.add(drNew);
             }
         } catch (Exception e) {
-            e.printStackTrace();
             throw new DataException("Unexpected error - " + e.getMessage(), e);
         }
 
@@ -184,9 +187,10 @@ public class CSVGridGenerator implements DataGridGenerator {
         return nErrorRows;
     }
 
-    private ArrayList readRows(InputStream is) throws IOException {
+    private ArrayList readRows(InputStream is, String textFormat) throws IOException {
         ArrayList alRet = new ArrayList();
-        BufferedReader brIn = new BufferedReader(new InputStreamReader(is));
+        BufferedReader brIn = new BufferedReader(
+                StringUtil.isNotBlankStr(textFormat) ? new InputStreamReader(is,textFormat) : new InputStreamReader(is));
         String sLine = null;
         while ((sLine = brIn.readLine()) != null) {
             ArrayList alFields = new ArrayList();
@@ -279,9 +283,9 @@ public class CSVGridGenerator implements DataGridGenerator {
             for (int nR = alFile.size() - 1; nR > 0; nR--) {
                 ArrayList alLine = (ArrayList) alFile.get(nR);
                 if (alLine.size() > nFields) {
-//TODO                    log.warning("Row #"+(nR+(this.bHasHeader ? 0 : 1)+nRemoveCount)+" contains too many fields. Fields parsed:\n"+alLine.toString());
+                    log.log(Level.WARNING, "Row #{0} contains too many fields. Fields parsed: {1}", new Object[]{nR+(this.bHasHeader ? 0 : 1)+nRemoveCount, alLine.toString()});
                 } else if (alLine.size() < nFields) {
-//TODO                    log.warning("Row #"+(nR+(this.bHasHeader ? 0 : 1)+nRemoveCount)+" contains less than expected number of fields. Fields parsed:\n"+alLine.toString());
+                    log.log(Level.WARNING, "Row #{0} contains less than expected number of fields. Fields parsed: {1}", new Object[]{nR+(this.bHasHeader ? 0 : 1)+nRemoveCount, alLine.toString()});
                 }
             }
         }

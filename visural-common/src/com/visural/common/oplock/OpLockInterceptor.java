@@ -36,7 +36,7 @@ import org.aopalliance.intercept.MethodInvocation;
  */
 public class OpLockInterceptor implements MethodInterceptor {
 
-    private static Logger logger = Logger.getLogger(OpLockInterceptor.class.getName());
+    private static final Logger logger = Logger.getLogger(OpLockInterceptor.class.getName());
 
     @Inject KeyProvider keyProvider;
 

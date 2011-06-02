@@ -91,7 +91,7 @@ public class WebClient implements Serializable {
 
 
     private boolean checkInlineSupport(boolean returnMhtml) {
-        boolean mhtml = false;;
+        boolean mhtml = false;
         boolean dataUri = false;
         switch (getUserAgent()) {
             case CHROME:

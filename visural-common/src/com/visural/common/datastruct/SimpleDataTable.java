@@ -323,9 +323,7 @@ public class SimpleDataTable implements Serializable {
             while (brInput.ready()) {
                 sLine = brInput.readLine();
                 /* attempt to process read line, if error then display the bogus row */
-                if (!processRow(sLine, bQuoted)) {
-                    //log.warning("Invalid Row ("+(nRead+1)+"): " + sLine);
-                } else {
+                if (processRow(sLine, bQuoted)) {
                     nRead++;
                 }
             }

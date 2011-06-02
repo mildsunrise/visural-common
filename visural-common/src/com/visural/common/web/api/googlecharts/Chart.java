@@ -32,7 +32,7 @@ public class Chart {
         return encodeSimple(values, null);
     }
     public static String encodeSimple(Double[] values, Double forcedMax) {
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
         /*
          * A—Z, where A = 0, B = 1, and so on, to Z = 25
 a—z, where a = 26, b = 27, and so on, to z = 51

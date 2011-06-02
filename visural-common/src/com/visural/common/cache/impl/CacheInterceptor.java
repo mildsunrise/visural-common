@@ -60,7 +60,7 @@ public class CacheInterceptor implements MethodInterceptor {
                 Object result = mi.proceed();
                 cacheData.put(call, annot, result);
                 return result;
-            } finally {
+            } finally { //NOPMD
                 // let error pass up the stack
             }
         }

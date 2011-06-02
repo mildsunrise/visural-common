@@ -29,7 +29,7 @@ public class DataException extends Exception implements Serializable {
     }
 
     public DataException(String sEx, Throwable t) {
-        super(sEx);
+        super(sEx, t);
     }
 
     public DataException(Throwable e) {

@@ -23,6 +23,7 @@ import junit.framework.TestCase;
  *
  * @author Richard Nichols
  */
+@SuppressWarnings("PMD")
 public class WebClientTest extends TestCase {
 
     private static class BrowserTest {
