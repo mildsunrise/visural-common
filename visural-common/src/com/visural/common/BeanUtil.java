@@ -23,6 +23,8 @@ import java.lang.reflect.Method;
  * @author Visural
  */
 public class BeanUtil {
+    
+    // TODO: deprecate in favour java.beans
 
     /**
      * Attempt to find a getter method for the given bean property. Returns
@@ -63,10 +65,8 @@ public class BeanUtil {
         try {
             String setterName = "set" + propertyName.toUpperCase().substring(0, 1) + propertyName.substring(1);
             for (Method m : beanType.getMethods()) {
-                if (m.getName().equals(setterName)) {
-                    if (m.getParameterTypes().length == 1) {
-                        return m;
-                    }
+                if (m.getName().equals(setterName) && m.getParameterTypes().length == 1) {
+                    return m;
                 }
             }
             return null;

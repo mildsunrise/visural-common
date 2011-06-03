@@ -133,7 +133,7 @@ public class HtmlSanitizer {
                             continue;
                         }
                     } else if ("td".equals(tag) || "th".equals(tag)) {
-                        if (openTags.search("tr") < 1) {
+                        if (openTags.search("tr") < 1) { //NOPMD
                             ret.invalidTags.add("<" + tag + ">");
                             continue;
                         }

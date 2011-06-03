@@ -206,7 +206,7 @@ public class DataGrid implements Serializable {
         for (int n = 0; n < this.getNumRows(); n++) {
             int nRow = dt.addRow();
             for (int nC = 0; nC < header.getNumFields(); nC++) {
-                dt.setCell(n, nC, Function.strnvl(this.getCellAsString(n, nC), ""));
+                dt.setCell(nRow, nC, Function.strnvl(this.getCellAsString(n, nC), ""));
             }
         }
 

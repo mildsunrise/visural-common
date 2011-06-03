@@ -297,7 +297,7 @@ public class UrlValidator
 		if (isOff(ALLOW_ALL_SCHEMES))
 		{
 
-			if (!allowedSchemes.contains(scheme))
+			if (!allowedSchemes.contains(scheme))//NOPMD
 			{
 				return false;
 			}
@@ -369,7 +369,7 @@ public class UrlValidator
 		if (hostname)
 		{
 			// LOW-TECH FIX FOR VALIDATOR-202
-			// TODO: Rewrite to use ArrayList and .add semantics: see
+			// Rewrite to use ArrayList and .add semantics: see
 			// VALIDATOR-203
 			char[] chars = hostIP.toCharArray();
 			int size = 1;
@@ -474,7 +474,7 @@ public class UrlValidator
 		int dot2Count = countToken("..", path);
 		if (dot2Count > 0)
 		{
-			if ((slashCount - slash2Count - 1) <= dot2Count)
+			if ((slashCount - slash2Count - 1) <= dot2Count)//NOPMD
 			{
 				return false;
 			}

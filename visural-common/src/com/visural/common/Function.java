@@ -95,7 +95,6 @@ public class Function {
      * @return
      */
     public static String formatStackTrace(Throwable e) {
-        // TODO: rewrite
         StackTraceElement[] ste = e.getStackTrace();
 
         String sStackTrace = "Exception (" + e.getClass().getCanonicalName() + "): '" + e.getMessage() + "' @\n";

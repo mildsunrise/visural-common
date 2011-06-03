@@ -72,7 +72,7 @@ public class SQLTableGridWriter implements DataGridWriter {
         return bResult;
     }
 
-    private String getDMLStringForField(FieldType ft, Object o) {
+    private String getDMLStringForField(FieldType ft, Object o) {//NOPMD
         String sObjConverted = "";
         /*                                String sFieldClass = oF.getClass().getName();
         if (sFieldClass.compareTo("any") == 0)
@@ -113,7 +113,6 @@ public class SQLTableGridWriter implements DataGridWriter {
                 if (!dgParent.isValid()) {
                     throw new DataException("The table being written fails required field validation.");
                 }
-                String sLastUpdateStatment = "";
                 int nFields = dgParent.getFormat().getNumFields();
                 String sTable = dgParent.getFormat().getTableSource();
                 String sInsertList = "";
@@ -137,7 +136,6 @@ public class SQLTableGridWriter implements DataGridWriter {
                                 sDataList += getDMLStringForField(dgParent.getFormat().getFieldType(nF), oF);
                             }
                             String sInsert = "INSERT INTO " + sTable + " (" + sInsertList + ") VALUES (" + sDataList + ")";
-                            sLastUpdateStatment = sInsert;
                             Statement stInsert = con.createStatement();
                             stInsert.executeUpdate(sInsert);
                             stInsert.close();
@@ -153,7 +151,6 @@ public class SQLTableGridWriter implements DataGridWriter {
                                 }
                             }
                             String sDelete = "DELETE FROM " + sTable + " WHERE " + sPKDelete;
-                            sLastUpdateStatment = sDelete;
                             Statement stDelete = con.createStatement();
                             stDelete.executeUpdate(sDelete);
                             stDelete.close();
@@ -164,7 +161,6 @@ public class SQLTableGridWriter implements DataGridWriter {
                                 if (nF > 0) {
                                     sDataList += ", ";
                                 }
-                                Object oF = drCurrent.getField(nF).getData();
                                 sDataList += dgParent.getFormat().getFieldType(nF).getFieldName() + " = " + getDMLStringForField(dgParent.getFormat().getFieldType(nF), drCurrent.getField(nF).getData());
                             }
                             String sPKUpdate = "";
@@ -177,7 +173,6 @@ public class SQLTableGridWriter implements DataGridWriter {
                                 }
                             }
                             String sUpdate = "UPDATE " + sTable + " SET " + sDataList + " WHERE " + sPKUpdate;
-                            sLastUpdateStatment = sUpdate;
                             Statement stUpdate = con.createStatement();
                             stUpdate.executeUpdate(sUpdate);
                             stUpdate.close();

@@ -16,6 +16,7 @@
  */
 package com.visural.common.datastruct.datagrid.io;
 
+import com.visural.common.IOUtil;
 import com.visural.common.datastruct.datagrid.DataException;
 import com.visural.common.datastruct.datagrid.DataGridGenerator;
 import com.visural.common.datastruct.datagrid.DataRow;
@@ -87,7 +88,7 @@ public class SQLQueryGridGenerator implements DataGridGenerator {
                 sTableSource = null;
             }
 
-            if (bTryGuessTable) {
+            if (bTryGuessTable) {//NOPMD
                 //sTableSource = guessTableName(sQuery);
             }
 
@@ -116,22 +117,12 @@ public class SQLQueryGridGenerator implements DataGridGenerator {
         } catch (SQLException se) {
             throw new DataException("Error performing query", se);
         } finally {
-            try {
-                if (rsQuery != null) {
-                    rsQuery.close();
-                }
-            } catch (SQLException se) {
-            }
-            try {
-                if (stQuery != null) {
-                    stQuery.close();
-                }
-            } catch (SQLException se) {
-            }
+            IOUtil.silentClose(getClass(), rsQuery);
+            IOUtil.silentClose(getClass(), stQuery);
         }
     }
 
-    private String guessTableName(String sQuery) {
+    private String guessTableName(String sQuery) {//NOPMD
         String sResult = null;
         int nFromIdx = 0;
         if ((nFromIdx = sQuery.toUpperCase().indexOf("FROM")) > 0) {
