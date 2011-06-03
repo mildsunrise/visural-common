@@ -16,7 +16,9 @@
  */
 package com.visural.common;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Comparator;
 
 /**
@@ -26,6 +28,23 @@ import java.util.Comparator;
  * @author Richard Nichols
  */
 public class Function {
+    
+    /**
+     * Returns an array with #entries elements, with the given value copied to each element.
+     * 
+     * @param <T>
+     * @param clazz
+     * @param value
+     * @param entries
+     * @return 
+     */
+    public static <T> T[] arrayify(Class<T> clazz, T value, int entries) {
+        ArrayList<T> result = new ArrayList<T>();
+        for (int n = 0; n < entries; n++) {
+            result.add(value);
+        }
+        return result.toArray((T[])Array.newInstance(clazz, 0));       
+    }
 
     public static boolean allNotNull(Object... objs) {
         for (Object o : objs) {

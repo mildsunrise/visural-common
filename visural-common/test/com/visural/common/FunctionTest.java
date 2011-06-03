@@ -24,6 +24,14 @@ import junit.framework.TestCase;
  */
 public class FunctionTest extends TestCase {
     
+    public void testArrayify() {
+        String[] result = Function.arrayify(String.class, "test", 5);
+        assertTrue(result.length == 5);
+        for (String r : result) {
+            assertTrue(r.equals("test"));
+        }
+    }
+    
     public void testMinComparable() {
         assertTrue(Float.valueOf(5).equals(Function.min(Float.valueOf(8), Float.valueOf(5), Float.valueOf(6))));
     }
