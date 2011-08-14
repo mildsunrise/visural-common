@@ -90,10 +90,23 @@ public class DateUtil {
      * @return
      */
     public static Date parseDate(String dateStr, String format) {
+        return parseDate(dateStr, format, null);
+    }
+    
+    /**
+     * Parses a string into Date using the SimpleDateFormat format string provided.
+     * @param dateStr
+     * @param format
+     * @return
+     */
+    public static Date parseDate(String dateStr, String format, TimeZone tz) {
         if (dateStr == null) {
             return null;
         }
         SimpleDateFormat sdf = new SimpleDateFormat(format);
+        if (tz != null) {
+            sdf.setTimeZone(tz);
+        }
         Date result = sdf.parse(dateStr, new ParsePosition(0));
         return result;
     }
