@@ -16,6 +16,7 @@
  */
 package com.visural.common;
 
+import com.visural.common.apacherepack.FastDateFormat;
 import java.text.FieldPosition;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
@@ -46,21 +47,11 @@ public class DateUtil {
      * @return the resulting formatted string
      */
     public static String formatDate(Date d, String format) {
-        return formatDate(d, format, null);
+        return FastDateFormat.getInstance(format).format(d);
     }
 
     public static String formatDate(Date d, String format, TimeZone timeZone) {
-        if (d == null) {
-            return null;
-        } else {
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(format);
-            StringBuffer result = new StringBuffer();
-            if (timeZone != null) {
-                simpleDateFormat.setTimeZone(timeZone);
-            }
-            simpleDateFormat.format(d, result, new FieldPosition(0));
-            return result.toString();
-        }
+        return FastDateFormat.getInstance(format, timeZone).format(d);
     }
 
     public static final String PATTERN_RFC1123 = "EEE, dd MMM yyyy HH:mm:ss zzz";
