@@ -51,9 +51,23 @@
     </target>
 
     <target name="-pre-init">
-        <property file="version.properties"/>
+        <if>
+            <equals arg1="${env.RELEASE_NUMBER}" arg2="${env.RELEASE_NUMBER}" />
+            <then>
+                <property name="project.version" value="trunk"/>
+            </then>
+            <else>
+                <property name="project.version" value="${env.RELEASE_NUMBER}"/>
+            </else>
+        </if>
         <property name="dist.jar" value="dist/${ant.project.name}-${project.version}.jar"/>
     </target>
+    
+    <taskdef resource="net/sf/antcontrib/antcontrib.properties">
+        <classpath>
+            <pathelement location="lib/ant-contrib-0.6.jar"/>
+        </classpath>
+    </taskdef>    
 
     <target name="mavenise">
         <property name="maven.path" value="maven/com/visural/${ant.project.name}/"/>
