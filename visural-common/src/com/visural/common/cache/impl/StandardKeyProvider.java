@@ -25,14 +25,12 @@ import java.lang.reflect.Method;
 
 /**
  * Key provider that uses argument.toString() and detected {@link WithCacheId}
- *
- * @version $Id: CompositeKeyProvider.java 57 2010-05-31 03:51:03Z tibes80@gmail.com $
  * @author Richard Nichols
  */
-public class CompositeKeyProvider implements KeyProvider {
+public class StandardKeyProvider implements KeyProvider {
     
     public String getKey(MethodCall methodCall) {
-        StringBuffer key = new StringBuffer(/*methodCall.getMethod().getName()*/);
+        StringBuilder key = new StringBuilder(/*methodCall.getMethod().getName()*/);
         int n = 0;
         for (Object o : methodCall.getArguments()) {
             if (!hasIgnoreAnnotation(methodCall.getMethod(), n++)) {

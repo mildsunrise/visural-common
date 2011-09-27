@@ -36,6 +36,16 @@ public class CacheService implements Cacheable {
     }
     
     private int callCounter = 0;
+    
+    @Cache(maxEntries=0)
+    public void invalidMaxEntries() {
+        
+    }
+    
+    @Cache(maxEntries = 100, evictionStrategy= EvictionStrategy.LRU)
+    public void simpleMethod(String foo) {
+        
+    }
 
     @Cache(maxEntries = 3, timeToLive = 100)
     public int longServiceToCache_3_100(String argument) {
@@ -54,6 +64,11 @@ public class CacheService implements Cacheable {
         }
         return callCounter++;
     }
+    
+    @Cache(maxEntries = 5)
+    public int randomServiceToCache() {
+        return (int)(Math.random()*1000000d);
+    }
 
     @Cache(maxEntries = 5, singletonCache=true)
     public int longSingletonToCache_5(String argument) {
@@ -66,5 +81,36 @@ public class CacheService implements Cacheable {
 
     public int getCounter() {
         return callCounter;
+    }
+    
+    @Cache(maxEntries=5, evictionStrategy= EvictionStrategy.FIFO)
+    public double esFIFO(int arg) {
+        return Math.random();
+    }
+    
+    @Cache(maxEntries=5, evictionStrategy= EvictionStrategy.LFU)
+    public double esLFU(int arg) {
+        return arg+Math.random();
+//        return arg;
+    }
+    
+    @Cache(maxEntries=5, evictionStrategy= EvictionStrategy.LFU_TIMECOST)
+    public double esLFU_TIMECOST(int arg) {
+        return Math.random();
+    }
+    
+    @Cache(maxEntries=5, evictionStrategy= EvictionStrategy.LRU)
+    public double esLRU(int arg) {
+        return Math.random();
+    }
+
+    @Cache(maxEntries=100, softValues=true)
+    public byte[] bigMemSoft(Integer n) {
+        return new byte[50*1024*1024];
+    }
+
+    @Cache(maxEntries=100)
+    public byte[] bigMemHard(Integer n) {
+        return new byte[50*1024*1024];
     }
 }

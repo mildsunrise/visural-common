@@ -25,7 +25,7 @@ import junit.framework.TestCase;
  * @author Richard Nichols
  */
 public class CacheTest extends TestCase {
-
+    
     private Injector getInjector() {
         return Guice.createInjector(new CacheModule());
     }
@@ -68,6 +68,14 @@ public class CacheTest extends TestCase {
         assertTrue(5 == cs.longServiceToCache_5("not cached"));
     }
 
+    public void testNonSingletonCache() {
+        CacheService[] cs = getCaches(2);
+        int[] results = new int[] {cs[0].randomServiceToCache(), cs[1].randomServiceToCache()};
+        for (int n = 0; n < 5; n++) {
+            int loopresult = cs[n%2].randomServiceToCache();
+            assertTrue(loopresult == results[n%2]);
+        }
+    }
 
     /**
      * Singleton test logic hold exactly the same as non-singleton, except we
@@ -124,5 +132,85 @@ public class CacheTest extends TestCase {
         int prev = cs.getCounter();
         cs.longServiceToCache_5("static");
         assertTrue(prev + 1 == cs.getCounter());
+    }
+    
+    public void testInvalidateAllValues() {
+        CacheService cs = getCache();
+        cs.longServiceToCache_5("static1");
+        cs.longServiceToCache_5("static2");
+        cs.longServiceToCache_5("static3");
+        cs.longServiceToCache_5("static4");
+        cs.__cacheData().invalidateCache(MethodCall.get(cs.getClass(), "longServiceToCache_5", "static").getMethod());
+        int prev = cs.getCounter();
+        cs.longServiceToCache_5("static1");
+        cs.longServiceToCache_5("static2");
+        cs.longServiceToCache_5("static3");
+        cs.longServiceToCache_5("static4");
+        assertTrue(prev + 4 == cs.getCounter());
+    }
+    
+    public void testInvalidMaxEntries() {
+        CacheService cs = getCache();
+        try {
+            cs.invalidMaxEntries();
+            fail("Should not allow maxEntries <= 0");
+        } catch (IllegalArgumentException e) {
+        }
+    }
+    
+    public void testTTL() throws Exception {
+        CacheService cs = getCache();
+        int result = cs.longServiceToCache_3_100("foo");
+        assertTrue(result == cs.longServiceToCache_3_100("foo"));
+        Thread.sleep(1000);
+        assertTrue(result + 1 == cs.longServiceToCache_3_100("foo"));
+    }
+    
+    public void testFIFO() {
+        CacheService cs = getCache();
+        double result = cs.esFIFO(0);        
+        for (int n = 1; n < 6; n++) {
+            cs.esFIFO(0);
+            assertTrue(cs.esFIFO(n) == cs.esFIFO(n));
+        }
+        assertTrue(result != cs.esFIFO(0));
+    }    
+    
+    public void testLFU() {
+        CacheService cs = getCache();
+        double result0 = cs.esLFU(0);        
+        double result1 = cs.esLFU(1);        
+        for (int n = 2; n < 6; n++) {
+            cs.esLFU(0);
+            assertTrue(cs.esLFU(n) == cs.esLFU(n));
+        }
+        assertTrue(result0 == cs.esLFU(0));
+        assertTrue(result1 != cs.esLFU(1));
+    }
+
+    public void testInvalidateSingleton() {
+        CacheService cs = getCache();
+        cs.longSingletonToCache_5("static");
+        cs.__cacheData().invalidateCache(MethodCall.get(cs.getClass(), "longSingletonToCache_5", "static"));
+        int prev = cs.getCounter();
+        cs.longSingletonToCache_5("static");
+        assertTrue(prev + 1 == cs.getCounter());
+    }
+    
+    public void testSoftRef() {
+        CacheService cs = getCache();
+        try {
+            for (int n = 0; n < 10; n++) {
+                cs.bigMemHard(n);
+            }        
+            fail("should run out of ram");
+        } catch (java.lang.OutOfMemoryError e) {
+            // clear cache to free ram
+            cs.__cacheData().invalidateCache(MethodCall.get(cs.getClass(), "bigMemHard", (int)0).getMethod());
+        }
+
+        for (int n = 0; n < 10; n++) {
+            cs.bigMemSoft(n);
+        }
     }
 }

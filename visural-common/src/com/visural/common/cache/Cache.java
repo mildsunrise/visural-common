@@ -39,11 +39,28 @@ public @interface Cache {
     int timeToLive() default 0;
 
     /**
-     * Maximum number of results to cache. Results are evicted based on {@link LRUCache}
+     * Maximum number of results to cache. Must be > 0.
+     * If you want to disable caching then remove the {@link CacheModule} or 
+     * comment out the annotation on a case-by-case basis
+     * If you want to have an unlimited in size cache (not recommended) 
+     * use Integer.MAX_VALUE
      * @return
      */
-    int maxEntries() default 0;
+    int maxEntries() default 1000;
 
+    /**
+     * Set eviction strategy for cache. See {@link EvictionStrategy}
+     */
+    EvictionStrategy evictionStrategy() default EvictionStrategy.LRU;
+    
+    /**
+     * You can use {@link SoftReference} values rather than hard referenced values
+     * to have bigger caches that will be garbage collected if memory is running out.
+     * Note that once enabled, all cached values for this method will be soft referenced.
+     * @return 
+     */
+    boolean softValues() default false;
+    
     /**
      * Default is that caches relate only to the local object instance (i.e. use
      * declaring object's scope). If you want the cached results to apply to all
@@ -51,4 +68,5 @@ public @interface Cache {
      * @return
      */
     boolean singletonCache() default false;
+        
 }

@@ -14,7 +14,6 @@
  *  limitations under the License.
  *  under the License.
  */
-
 package com.visural.common.cache.impl;
 
 import com.google.inject.Inject;
@@ -22,11 +21,10 @@ import com.visural.common.cache.Cache;
 import com.visural.common.cache.CacheData;
 import com.visural.common.cache.KeyProvider;
 import com.visural.common.cache.MethodCall;
-import com.visural.common.datastruct.LRUCache;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Local cache implementation.
@@ -35,86 +33,88 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Richard Nichols
  */
 public class CacheDataImpl implements CacheData {
-    
-    private Map<String,Map<String,CacheEntry>> caches = new ConcurrentHashMap<String, Map<String,CacheEntry>>();
+
+    private Map<String, MethodCache> caches = new HashMap<String, MethodCache>();
     private final KeyProvider keyProvider;
-    private final CacheInterceptor cacheInterceptor;
-    private final boolean isSingletonCache;
+    private final CacheInterceptor interceptor;
+    private boolean singletonCache = false;
 
     @Inject
-    public CacheDataImpl(CacheInterceptor cacheInterceptor, KeyProvider keyProvider) {
+    public CacheDataImpl(KeyProvider keyProvider, CacheInterceptor interceptor) {
         this.keyProvider = keyProvider;
-        this.cacheInterceptor = cacheInterceptor;
-        isSingletonCache = false;
-    }
-
-    public CacheDataImpl(KeyProvider keyProvider) {
-        this.keyProvider = keyProvider;
-        this.cacheInterceptor = null;
-        isSingletonCache = true;
+        this.interceptor = interceptor;
     }
 
     public CacheEntry get(MethodCall methodCall) {
-        Map<String,CacheEntry> cache = getMethodCache(methodCall.getMethod());
+        MethodCache cache = getMethodCache(methodCall.getMethod());
         if (cache != null) {
-            String key = keyProvider.getKey(methodCall);
-            CacheEntry ce = cache.get(key);
-            if (ce != null && ce.isExpired()) {
-                cache.remove(key);
-                ce = null;
-    }
-            return ce;
+            return cache.get(methodCall);
         } else {
             return null;
         }
     }
-
-    public void put(MethodCall methodCall, Cache annot, Object result) {
-        Map<String,CacheEntry> cache = getAndCreateMethodCache(methodCall.getMethod(), annot);
-        cache.put(keyProvider.getKey(methodCall), new CacheEntry(annot.timeToLive(), result));
+    
+    public void markAsSingletonCache() {
+        singletonCache = true;
     }
 
-    protected Map<String,CacheEntry> getAndCreateMethodCache(Method m, Cache annot) {
-        Map<String,CacheEntry> result = caches.get(m.toString());
-        if (annot.singletonCache() && !isSingletonCache) {
+    public void put(long created, long timeCost, MethodCall methodCall, Cache annot, Object result) {
+        MethodCache cache = getAndCreateMethodCache(methodCall.getMethod(), annot);
+        cache.put(created, timeCost, methodCall, result);
+    }
+
+    protected MethodCache getAndCreateMethodCache(Method m, Cache annot) {
+        MethodCache result = getMethodCache(m);
         if (result == null) {
-                result = cacheInterceptor.getAndCreateMethodCache(m, annot);
-                caches.put(m.toString(), result);
-            }
-            } else {
-            int maxEntries = annot.maxEntries();
-            if (result == null) {
-                if (maxEntries > 0) {
-                    result = Collections.synchronizedMap(new LRUCache(maxEntries));
-                } else {
-                result = Collections.synchronizedMap(new LRUCache());
-            }
-            caches.put(m.toString(), result);
-        }
+            result = createMethodCache(m, annot);
         }
         return result;
     }
     
-    protected Map<String,CacheEntry> getMethodCache(Method m) {
-        Map<String,CacheEntry> result = getDirectMethodCache(m);
+    private synchronized MethodCache createMethodCache(Method m, Cache annot) {
+        MethodCache result = getMethodCache(m);
         if (result == null) {
-            result = cacheInterceptor.getMethodCache(m);
-            if (result != null) {
-                caches.put(m.toString(), result);
-}
+            result = new MethodCache(annot, m, keyProvider);
+            caches.put(getMethodString(m), result);
         }
         return result;
     }
-
-    protected Map<String,CacheEntry> getDirectMethodCache(Method m) {
-        return caches.get(m.toString());
+    
+    protected MethodCache getMethodCache(Method m) {
+        return caches.get(getMethodString(m));
     }
 
+    // Method.toString() is actually quite expensive so we use a local cache for this
+    private Map<Method, String> methodToStringCache = Collections.synchronizedMap(new HashMap<Method, String>());
+    
+    private String getMethodString(Method m) {
+        String key = methodToStringCache.get(m);
+        if (key == null) {
+            key = m.toString();
+            methodToStringCache.put(m, key);
+        }
+        return key;        
+    }
+        
     public void invalidateCache(MethodCall methodCall) {
-        Map<String,CacheEntry> cache = getMethodCache(methodCall.getMethod());
-        if (cache != null) {
-            cache.remove(keyProvider.getKey(methodCall));
+        if (methodCall.getMethod().getAnnotation(Cache.class).singletonCache() && !singletonCache) {
+            interceptor.singletonCache.invalidateCache(methodCall);
+        } else {
+            MethodCache cache = getMethodCache(methodCall.getMethod());
+            if (cache != null) {
+                cache.invalidateCache(methodCall);
+            }            
         }
     }
-    
+
+    public void invalidateCache(Method method) {
+        if (method.getAnnotation(Cache.class).singletonCache() && !singletonCache) {
+            interceptor.singletonCache.invalidateCache(method);
+        } else {
+            MethodCache cache = getMethodCache(method);
+            if (cache != null) {
+                cache.invalidateCache();
+            }
+        }
+    }
 }

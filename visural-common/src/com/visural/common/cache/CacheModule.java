@@ -16,7 +16,7 @@
  */
 package com.visural.common.cache;
 
-import com.visural.common.cache.impl.CompositeKeyProvider;
+import com.visural.common.cache.impl.StandardKeyProvider;
 import com.visural.common.cache.impl.CacheInterceptor;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -46,7 +46,7 @@ public class CacheModule extends AbstractModule {
     }
 
     protected Class<? extends KeyProvider> getKeyProvider() {
-        return CompositeKeyProvider.class;
+        return StandardKeyProvider.class;
     }
 
     @Provides

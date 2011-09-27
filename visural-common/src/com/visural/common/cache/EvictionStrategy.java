@@ -16,25 +16,24 @@
  */
 package com.visural.common.cache;
 
-import java.lang.reflect.Method;
-
 /**
- * Public interface for cache data to be held by cached instances.
- * 
- * @version $Id: CacheData.java 38 2010-05-24 11:39:51Z tibes80@gmail.com $
- * @author Richard Nichols
+ * Different eviction strategies for removing items from the cache when it's full.
+ * @author Visural
  */
-public interface CacheData {
-
+public enum EvictionStrategy {
+    
+    LRU,  // LEAST RECENTLY USED (default)
+    FIFO, // FIRST IN FIRST OUT
+    
+    // Note that LFU and LFU_TIMECOST are more costly in terms of CPU and thread
+    // performance due to thread locking needing to occur for each get()
+    
+    LFU,  // LEAST FREQUENTLY USED
+    
     /**
-     * Invalidate any cached value for the given method call.
-     * @param methodCall 
+     * Sorts the entries by (timecost+1)*#uses and evicts the least valuable item.
+     * +1 is added to timecost to ensure value >= 1.
+     * Note that timecost is only to millisecond accuracy.
      */
-    void invalidateCache(MethodCall methodCall);
-
-    /**
-     * Invalidate any cached values for all possible invocations of the given method.
-     * @param method 
-     */
-    void invalidateCache(Method method);
+    LFU_TIMECOST;
 }
