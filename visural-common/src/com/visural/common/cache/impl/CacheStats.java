@@ -16,6 +16,7 @@
  */
 package com.visural.common.cache.impl;
 
+import com.visural.common.StringUtil;
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -25,14 +26,14 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class CacheStats implements Serializable {
     
-    public final AtomicLong hitCount;
-    public final AtomicLong missCount;
-    public final AtomicLong loadCount;
-    public final AtomicLong totalLoadTime;
-    public final AtomicLong evictionCount;
+    private final AtomicLong hitCount;
+    private final AtomicLong missCount;
+    private final AtomicLong loadCount;
+    private final AtomicLong totalLoadTime;
+    private final AtomicLong evictionCount;
 
     public CacheStats() {
-        this(0, 0, 0, 0, 0);
+        this(0, 1, 0, 0, 0);
     }
 
     public CacheStats(long hitCount, long missCount, long loadCount, long totalLoadTime, long evictionCount) {
@@ -67,12 +68,40 @@ public class CacheStats implements Serializable {
         return (double)missCount.get()/((double)missCount.get()+(double)hitCount.get());
     }
     
+    public String getMissRatePercent() {
+        return StringUtil.formatDecimal(getMissRate()*100, 2)+"%";
+    }
+    
     public double getHitRate() {
         return (double)hitCount.get()/((double)missCount.get()+(double)hitCount.get());
     }
     
-    public long averageLoadTimeNanos() {
+    public String getHitRatePercent() {
+        return StringUtil.formatDecimal(getHitRate()*100, 2)+"%";
+    }
+    
+    public long getAverageLoadTimeNanos() {
         return totalLoadTime.get() / loadCount.get();
+    }
+
+    public AtomicLong getEvictionCount() {
+        return evictionCount;
+    }
+
+    public AtomicLong getHitCount() {
+        return hitCount;
+    }
+
+    public AtomicLong getLoadCount() {
+        return loadCount;
+    }
+
+    public AtomicLong getMissCount() {
+        return missCount;
+    }
+
+    public AtomicLong getTotalLoadTime() {
+        return totalLoadTime;
     }
 
     @Override
@@ -83,7 +112,7 @@ public class CacheStats implements Serializable {
         sb.append("requestCount = ").append(hitCount.get()+missCount.get()).append('\n');
         sb.append("loadCount = ").append(loadCount).append('\n');
         sb.append("totalLoadTime = ").append(totalLoadTime).append('\n');
-        sb.append("averageLoadTime = ").append(averageLoadTimeNanos()).append('\n');
+        sb.append("averageLoadTime = ").append(getAverageLoadTimeNanos()).append('\n');
         sb.append("evictionCount = ").append(evictionCount).append('\n');
         return sb.toString();
     }

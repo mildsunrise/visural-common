@@ -2,15 +2,76 @@
     <head>
         <title>Cache Inspector</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <link rel="stylesheet" type="text/css" href="https://raw.github.com/necolas/normalize.css/master/normalize.css"/>
+        <style type="text/css">
+            body {
+                font-family: Calibri, Verdana, Arial, Helvetica;
+                padding: 0px 10px 50px 10px;
+            }
+            table {
+                border: 1px solid #222;
+                border-collapse: collapse;
+                display: block;
+            }
+            thead {
+                background-color: #ff9;    
+            }
+            h2 {
+                text-align: left;
+                margin: 0;
+                border-bottom: 1px dashed #aaa;
+            }            
+            th, td, tr {
+                margin: 0;
+                padding: 4px;
+                border-right: 1px dotted #aaa;
+                text-align: right;
+            }
+            tr {
+                padding: 0;
+            }
+            tr.a {
+                background-color: #eeffff;
+            }
+            tr.b {
+                background-color: #f8ffff;
+            }
+        </style>        
     </head>
     <body>
-        <h1>Cache Statistics</h1>
-        $classes.keys:{k|
-        <h2>$k$</h2>
-            $classes.(k):{m|
-            <h3>$m$</h3>
-            $classes.(k).(m)$
+        <h1>Cache Statistics ($server$)</h1>
+        <table>
+        $classes.keys:{k|        
+            <thead>
+                <tr>
+                    <th colspan="100">
+                        <h2>$k$</h2>
+                    </th>
+                </tr>
+                <tr>
+                    <th>Method</th>
+                    <th># Requests</th>
+                    <th>Hit Rate</th>
+                    <th>Miss Rate</th>
+                    <th>Total Load Time (s)</th>
+                    <th>Average Load Time (ms)</th>
+                    <th># Evictions</th>
+                </tr>
+            </thead>
+            <tbody>
+            $classes.(k):{m|          
+                <tr class="$m.rowClass$">
+                    <td title="$m.method$"><b>$m.methodName$</b></td>
+                    <td>$m.stats.requestCount$</td>
+                    <td title="$m.stats.hitCount$ hits">$m.stats.hitRatePercent$</td>
+                    <td title="$m.stats.missCount$ misses">$m.stats.missRatePercent$</td>
+                    <td>$m.totalLoadTimeSeconds$</td>
+                    <td>$m.averageLoadTimeMillis$</td>
+                    <td>$m.stats.evictionCount$</td>
+                </tr>
             }$            
+            </tbody>
         }$
+        </table>
     </body>
 </html>

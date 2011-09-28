@@ -45,6 +45,10 @@ public class CacheDataImpl implements CacheData {
         this.keyProvider = keyProvider;
         this.interceptor = interceptor;
     }
+    
+    public boolean isEmpty() {
+        return caches.isEmpty();
+    }
 
     public CacheEntry get(MethodCall methodCall) {
         MethodCache cache = getMethodCache(methodCall.getMethod());

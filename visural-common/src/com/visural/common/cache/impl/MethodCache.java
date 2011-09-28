@@ -83,7 +83,7 @@ public class MethodCache {
                     protected boolean removeEldestEntry(Entry eldest) {
                         boolean remove = super.removeEldestEntry(eldest);
                         if (remove) {
-                            stats.evictionCount.incrementAndGet();
+                            stats.getEvictionCount().incrementAndGet();
                         }
                         return remove;
                     }                    
@@ -121,9 +121,9 @@ public class MethodCache {
             }
         }
         if (c == null) {
-            stats.missCount.incrementAndGet();
+            stats.getMissCount().incrementAndGet();
         } else {
-            stats.hitCount.incrementAndGet();
+            stats.getHitCount().incrementAndGet();
         }
         return c;
     }
@@ -134,13 +134,13 @@ public class MethodCache {
                 new CacheEntry(key, created, settings.timeToLive(), timeCost, new SoftReference(result)) :
                 new CacheEntry(key, created, settings.timeToLive(), timeCost, result);
         cache.put(key, e);
-        stats.loadCount.incrementAndGet();
-        stats.totalLoadTime.addAndGet(e.getTimeCost());
+        stats.getLoadCount().incrementAndGet();
+        stats.getTotalLoadTime().addAndGet(e.getTimeCost());
         if (sortedEntries != null) {
             if (sortedEntries.size() >= settings.maxEntries()) {
                 CacheEntry r = sortedEntries.poll();
                 cache.remove(r.getKey());
-                stats.evictionCount.incrementAndGet();
+                stats.getEvictionCount().incrementAndGet();
             }
             sortedEntries.add(e);
         }

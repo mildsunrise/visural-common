@@ -17,6 +17,7 @@
 package com.visural.common.cache.impl;
 
 import com.google.inject.Inject;
+import com.visural.common.Unproxy;
 import com.visural.common.cache.Cache;
 import com.visural.common.cache.Cacheable;
 import com.visural.common.cache.KeyProvider;
@@ -123,7 +124,7 @@ public class CacheInterceptor implements MethodInterceptor {
             for (WeakReference<Cacheable> c : instances) {
                 if (c.get() != null) {
                     Map<String, CacheStats> cs = c.get().__cacheData().getStatistics();
-                    String key = c.get().getClass().getName();
+                    String key = Unproxy.clazz(c.get().getClass()).getName();
                     if (result.get(key) == null) {
                         result.put(key, cs);
                     } else {
@@ -138,7 +139,9 @@ public class CacheInterceptor implements MethodInterceptor {
 
                 }
             }
-            result.put("_SingletonCaches", singletonCache.getStatistics());            
+            if (!singletonCache.isEmpty()) {
+                result.put("_SingletonCaches", singletonCache.getStatistics());
+            }            
         }
         return result;
     }

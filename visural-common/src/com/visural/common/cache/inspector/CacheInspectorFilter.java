@@ -19,10 +19,18 @@ package com.visural.common.cache.inspector;
 import com.visural.common.IOUtil;
 import com.visural.common.StringUtil;
 import com.visural.common.cache.CacheModule;
+import com.visural.common.cache.impl.CacheStats;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -85,7 +93,21 @@ public class CacheInspectorFilter implements Filter {
                 out.close();
             } else {
                 StringTemplate t = htmlTemplate.getInstanceOf();                
-                t.setAttribute("classes", module.get().getStatistics());                
+                Map<String, Map<String, CacheStats>> stats = module.get().getStatistics();
+                Map<String, List<StatEntry>> classes = new HashMap();
+                for (Entry<String, Map<String, CacheStats>> e : stats.entrySet()) {
+                    List<StatEntry> methods = new ArrayList();
+                    classes.put(e.getKey(), methods);
+                    for (Entry<String, CacheStats> s : e.getValue().entrySet()) {
+                        Pattern p = Pattern.compile(".+"+Pattern.quote(e.getKey())+"\\.(.+)\\(");
+                        Matcher m = p.matcher(s.getKey());
+                        m.find();
+                        String methodName = m.group(1);
+                        methods.add(new StatEntry(s.getKey().replace(e.getKey()+".", ""), methodName, s.getValue(), methods.size()%2 == 0 ? "a" : "b"));
+                    }
+                }
+                t.setAttribute("classes", classes);   
+                t.setAttribute("server", req.getServerName()+":"+req.getServerPort()+req.getContextPath());
                 out.write(t.toString().getBytes());
                 out.close();
             }
@@ -96,5 +118,44 @@ public class CacheInspectorFilter implements Filter {
 
     public void destroy() {
     }    
+    
+    public static class StatEntry {
+        private final String method;
+        private final String methodName;
+        private final CacheStats stats;
+        private final String rowClass;
+
+        public StatEntry(String method, String methodName, CacheStats stats, String rowClass) {
+            this.method = method;
+            this.methodName = methodName;
+            this.stats = stats;
+            this.rowClass = rowClass;
+        }
+
+        public String getMethod() {
+            return method;
+        }
+
+        public String getMethodName() {
+            return methodName;
+        }
+
+        public CacheStats getStats() {
+            return stats;
+        }
+        
+        public String getTotalLoadTimeSeconds() {
+            return StringUtil.formatDecimal((double)stats.getTotalLoadTime().get()/1000000000.0, 2);
+        }
+        
+        public String getAverageLoadTimeMillis() {
+            return StringUtil.formatDecimal((double)stats.getAverageLoadTimeNanos()/1000000.0, 2);
+        }
+
+        public String getRowClass() {
+            return rowClass;
+        }
+        
+    }
     
 }
