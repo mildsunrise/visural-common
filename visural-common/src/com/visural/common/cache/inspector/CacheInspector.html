@@ -1,0 +1,16 @@
+<html>
+    <head>
+        <title>Cache Inspector</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+    <body>
+        <h1>Cache Statistics</h1>
+        $classes.keys:{k|
+        <h2>$k$</h2>
+            $classes.(k):{m|
+            <h3>$m$</h3>
+            $classes.(k).(m)$
+            }$            
+        }$
+    </body>
+</html>

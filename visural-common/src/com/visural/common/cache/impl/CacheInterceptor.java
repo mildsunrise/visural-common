@@ -21,6 +21,13 @@ import com.visural.common.cache.Cache;
 import com.visural.common.cache.Cacheable;
 import com.visural.common.cache.KeyProvider;
 import com.visural.common.cache.MethodCall;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -35,15 +42,25 @@ import org.aopalliance.intercept.MethodInvocation;
 public class CacheInterceptor implements MethodInterceptor {
 
     private static final Logger logger = Logger.getLogger(CacheInterceptor.class.getName());
-
+    
     @Inject KeyProvider keyProvider;
     @Inject CacheDataImpl singletonCache;
+    
+    private Set<WeakReference<Cacheable>> instances = null;
+
+    public CacheInterceptor() {
+    }
     
     public Object invoke(MethodInvocation mi) throws Throwable {        
         singletonCache.markAsSingletonCache(); // TODO: only needed to be called once, but no suitable place to put it.
         
         Cache annot = (Cache) mi.getMethod().getAnnotation(Cache.class);
         Cacheable cacheable = (Cacheable) mi.getThis();
+        if (instances != null) {
+            synchronized (this) {
+                instances.add(new WeakReference<Cacheable>(cacheable));
+            }
+        }
 
         CacheDataImpl cacheData = annot.singletonCache() ? 
                 singletonCache : (CacheDataImpl) cacheable.__cacheData();
@@ -64,13 +81,66 @@ public class CacheInterceptor implements MethodInterceptor {
 
         // full execute
         try {                
-            long in = System.currentTimeMillis();
+            long inNano = System.nanoTime();
             Object result = mi.proceed();
+            long outNano = System.nanoTime();
             long out = System.currentTimeMillis();
-            cacheData.put(out, out-in, call, annot, result);
+            cacheData.put(out, outNano-inNano, call, annot, result);
             return result;
         } finally { //NOPMD
             // let error pass up the stack
         }
     }
+
+    public synchronized void setTrackReferences(boolean trackReferences) {
+        if (instances == null && trackReferences) {
+            instances = new HashSet<WeakReference<Cacheable>>();
+        } else if (instances != null && !trackReferences) {
+            instances = null;
+        }
+    }        
+    
+    public synchronized void clearDeferencedInstances() {
+        if (instances != null) {
+            Iterator<WeakReference<Cacheable>> i = instances.iterator();
+            while (i.hasNext()) {
+                WeakReference<Cacheable> e = i.next();
+                if (e.get() == null) {
+                    i.remove();
+                }
+            }
+        }        
+    }
+    
+    /**
+     * Return stats across all registered {@link Cacheable} instances which 
+     * have not been garbage collected.
+     * @return 
+     */
+    public Map<String, Map<String, CacheStats>> getStatistics() {
+        Map<String, Map<String, CacheStats>> result = new HashMap<String, Map<String, CacheStats>>();
+        if (instances != null) {
+            for (WeakReference<Cacheable> c : instances) {
+                if (c.get() != null) {
+                    Map<String, CacheStats> cs = c.get().__cacheData().getStatistics();
+                    String key = c.get().getClass().getName();
+                    if (result.get(key) == null) {
+                        result.put(key, cs);
+                    } else {
+                        for (Entry<String,CacheStats> e : cs.entrySet()) {
+                            if (result.get(key).get(e.getKey()) != null) {
+                                result.get(key).put(e.getKey(), result.get(key).get(e.getKey()).plus(e.getValue()));
+                            } else {
+                                result.get(key).put(e.getKey(), e.getValue());
+                            }
+                        }
+                    }
+
+                }
+            }
+            result.put("_SingletonCaches", singletonCache.getStatistics());            
+        }
+        return result;
+    }
+    
 }

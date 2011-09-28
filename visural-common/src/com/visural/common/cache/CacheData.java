@@ -16,7 +16,9 @@
  */
 package com.visural.common.cache;
 
+import com.visural.common.cache.impl.CacheStats;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 /**
  * Public interface for cache data to be held by cached instances.
@@ -26,6 +28,14 @@ import java.lang.reflect.Method;
  */
 public interface CacheData {
 
+    /**
+     * Return Cache statistics for each method which has active caching.
+     * Note that this operation is not guaranteed to return statistics in all
+     * cases or for all methods. You should check for null and handle accordingly.
+     * @return 
+     */
+    Map<String, CacheStats> getStatistics(); 
+    
     /**
      * Invalidate any cached value for the given method call.
      * @param methodCall 

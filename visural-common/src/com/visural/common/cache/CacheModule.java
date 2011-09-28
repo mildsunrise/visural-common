@@ -23,6 +23,8 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.matcher.Matchers;
 import com.visural.common.cache.impl.CacheDataImpl;
+import com.visural.common.cache.impl.CacheStats;
+import java.util.Map;
 
 /**
  * Guice module to enable Caching functionality.
@@ -33,10 +35,14 @@ import com.visural.common.cache.impl.CacheDataImpl;
  * @version $Id: CacheModule.java 38 2010-05-24 11:39:51Z tibes80@gmail.com $
  * @author Richard Nichols
  */
-public class CacheModule extends AbstractModule {
+public class CacheModule extends AbstractModule {    
 
-    private final CacheInterceptor interceptor = new CacheInterceptor();
+    private final CacheInterceptor interceptor;
 
+    public CacheModule() {
+        interceptor = new CacheInterceptor();
+    }
+   
     @Override
     protected void configure() {
         bind(KeyProvider.class).to(getKeyProvider()).in(Scopes.SINGLETON);
@@ -52,6 +58,10 @@ public class CacheModule extends AbstractModule {
     @Provides
     public CacheInterceptor getInterceptor() {
         return interceptor;
+    }
+    
+    public Map<String, Map<String, CacheStats>> getStatistics() {
+        return interceptor.getStatistics();
     }
 
 }

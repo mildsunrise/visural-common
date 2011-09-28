@@ -17,6 +17,7 @@
 package com.visural.common.cache.impl;
 
 import java.lang.ref.SoftReference;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Stateless wrapper for a cached result, which keeps created and ttl data.
@@ -29,16 +30,16 @@ public class CacheEntry {
 
     private final long created;
     private final int ttl;
-    private final int timeCost;
+    private final long timeCost;
     private final Object result;
     private final boolean softRef;
-    private int uses = 1;
+    private AtomicLong uses = new AtomicLong(1);
 
     public CacheEntry(String key, long created, long ttl, long timeCost, Object result) {
         this.key = key;
         this.created = created;        
         this.ttl = (int)ttl;
-        this.timeCost = (int)timeCost;
+        this.timeCost = timeCost;
         this.result = result;
         softRef = false;
     }
@@ -47,7 +48,7 @@ public class CacheEntry {
         this.key = key;
         this.created = created;        
         this.ttl = (int)ttl;
-        this.timeCost = (int)timeCost;
+        this.timeCost = timeCost;
         softRef = true;
         this.result = (result.get() == null ? null : result);
     }
@@ -56,19 +57,12 @@ public class CacheEntry {
         return key;
     }
     
-    /**
-     * Increments the usage counter for this entry.
-     * NOTE this is not synchronized, and *could be* to ensure thread safety,
-     * however it would reduce performance since get() on the cache would 
-     * require thread sync. To improve performance (at the cost of slightly 
-     * inaccurate usage counting) this is left non-blocking.
-     */
     public void incrementUses() {
-        uses++;
+        uses.addAndGet(1);
     }
 
-    public int getUses() {
-        return uses;
+    public long getUses() {
+        return uses.get();
     }
 
     public long getCreated() {
@@ -90,7 +84,7 @@ public class CacheEntry {
         }
     }
 
-    public int getTimeCost() {
+    public long getTimeCost() {
         return timeCost;
     }           
 
@@ -98,8 +92,8 @@ public class CacheEntry {
         return ttl;
     }
     
-    public int getUsesByTimecost() {
-        return uses*(timeCost+1);
+    public long getUsesByTimecost() {
+        return uses.get()*(timeCost+1);
     }
 
     /**

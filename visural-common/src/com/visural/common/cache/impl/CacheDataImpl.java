@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Local cache implementation.
@@ -116,5 +117,13 @@ public class CacheDataImpl implements CacheData {
                 cache.invalidateCache();
             }
         }
+    }
+    
+    public Map<String, CacheStats> getStatistics() {
+        Map<String, CacheStats> result = new HashMap<String, CacheStats>();
+        for (Entry<String, MethodCache> e : caches.entrySet()) {
+            result.put(e.getKey(), e.getValue().getStats());
+        }
+        return result;
     }
 }

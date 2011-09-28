@@ -26,6 +26,7 @@ import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 
 public class MethodCache {
@@ -34,6 +35,7 @@ public class MethodCache {
     private Map<String, CacheEntry> cache;
     private PriorityQueue<CacheEntry> sortedEntries = null;
     private final KeyProvider kp;
+    private final CacheStats stats = new CacheStats();
 
     public MethodCache(Cache settings, Method m, KeyProvider kp) {
         this.settings = settings;        
@@ -52,7 +54,7 @@ public class MethodCache {
             case LFU:
                 sortedEntries = new PriorityQueue<CacheEntry>(11, new Comparator<CacheEntry>() {
                     public int compare(CacheEntry o1, CacheEntry o2) {
-                        int result = Integer.valueOf(o1.getUses()).compareTo(o2.getUses());
+                        int result = Long.valueOf(o1.getUses()).compareTo(o2.getUses());
                         if (result == 0) {
                             // fallback to FIFO for same match
                             result = Long.valueOf(o1.getCreated()).compareTo(o2.getCreated());
@@ -65,7 +67,7 @@ public class MethodCache {
             case LFU_TIMECOST:
                 sortedEntries = new PriorityQueue<CacheEntry>(11, new Comparator<CacheEntry>() {
                     public int compare(CacheEntry o1, CacheEntry o2) {
-                        int result = Integer.valueOf(o1.getUsesByTimecost()).compareTo(o2.getUsesByTimecost());
+                        int result = Long.valueOf(o1.getUsesByTimecost()).compareTo(o2.getUsesByTimecost());
                         if (result == 0) {
                             // fallback to FIFO for same match
                             result = Long.valueOf(o1.getCreated()).compareTo(o2.getCreated());
@@ -76,12 +78,25 @@ public class MethodCache {
                 cache = new HashMap();
                 break;
             case LRU:
-                cache = new LRUCache<String, CacheEntry>(settings.maxEntries());
+                cache = new LRUCache<String, CacheEntry>(settings.maxEntries()) {
+                    @Override
+                    protected boolean removeEldestEntry(Entry eldest) {
+                        boolean remove = super.removeEldestEntry(eldest);
+                        if (remove) {
+                            stats.evictionCount.incrementAndGet();
+                        }
+                        return remove;
+                    }                    
+                };
                 break;
             default:
                 throw new IllegalStateException("Should not happen.");
         }
         this.kp = kp;
+    }
+
+    public CacheStats getStats() {
+        return stats;
     }
 
     public Cache getSettings() {
@@ -96,16 +111,19 @@ public class MethodCache {
                 invalidateCache(key);
                 c = null;                
             } else {
+                c.incrementUses();                
                 if (sortedEntries != null && !settings.evictionStrategy().equals(EvictionStrategy.FIFO)) {
                     synchronized(this) {
-                        c.incrementUses();
                         sortedEntries.remove(c);
                         sortedEntries.add(c);
                     }
-                } else {
-                    c.incrementUses();
                 }                
             }
+        }
+        if (c == null) {
+            stats.missCount.incrementAndGet();
+        } else {
+            stats.hitCount.incrementAndGet();
         }
         return c;
     }
@@ -116,10 +134,13 @@ public class MethodCache {
                 new CacheEntry(key, created, settings.timeToLive(), timeCost, new SoftReference(result)) :
                 new CacheEntry(key, created, settings.timeToLive(), timeCost, result);
         cache.put(key, e);
+        stats.loadCount.incrementAndGet();
+        stats.totalLoadTime.addAndGet(e.getTimeCost());
         if (sortedEntries != null) {
             if (sortedEntries.size() >= settings.maxEntries()) {
                 CacheEntry r = sortedEntries.poll();
                 cache.remove(r.getKey());
+                stats.evictionCount.incrementAndGet();
             }
             sortedEntries.add(e);
         }

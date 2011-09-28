@@ -33,7 +33,7 @@ public enum EvictionStrategy {
     /**
      * Sorts the entries by (timecost+1)*#uses and evicts the least valuable item.
      * +1 is added to timecost to ensure value >= 1.
-     * Note that timecost is only to millisecond accuracy.
+     * Note that timecost uses System.nanoTime();
      */
     LFU_TIMECOST;
 }
