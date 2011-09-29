@@ -20,6 +20,7 @@ import com.visural.common.IOUtil;
 import com.visural.common.StringUtil;
 import com.visural.common.cache.CacheModule;
 import com.visural.common.cache.impl.CacheStats;
+import com.visural.common.cache.impl.CacheStatsSnapshot;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -93,12 +94,12 @@ public class CacheInspectorFilter implements Filter {
                 out.close();
             } else {
                 StringTemplate t = htmlTemplate.getInstanceOf();                
-                Map<String, Map<String, CacheStats>> stats = module.get().getStatistics();
+                Map<String, Map<String, CacheStatsSnapshot>> stats = module.get().getStatistics(true);
                 Map<String, List<StatEntry>> classes = new HashMap();
-                for (Entry<String, Map<String, CacheStats>> e : stats.entrySet()) {
+                for (Entry<String, Map<String, CacheStatsSnapshot>> e : stats.entrySet()) {
                     List<StatEntry> methods = new ArrayList();
                     classes.put(e.getKey(), methods);
-                    for (Entry<String, CacheStats> s : e.getValue().entrySet()) {
+                    for (Entry<String, CacheStatsSnapshot> s : e.getValue().entrySet()) {
                         Pattern p = Pattern.compile(".+"+Pattern.quote(e.getKey())+"\\.(.+)\\(");
                         Matcher m = p.matcher(s.getKey());
                         m.find();
@@ -122,10 +123,10 @@ public class CacheInspectorFilter implements Filter {
     public static class StatEntry {
         private final String method;
         private final String methodName;
-        private final CacheStats stats;
+        private final CacheStatsSnapshot stats;
         private final String rowClass;
 
-        public StatEntry(String method, String methodName, CacheStats stats, String rowClass) {
+        public StatEntry(String method, String methodName, CacheStatsSnapshot stats, String rowClass) {
             this.method = method;
             this.methodName = methodName;
             this.stats = stats;
@@ -140,7 +141,7 @@ public class CacheInspectorFilter implements Filter {
             return methodName;
         }
 
-        public CacheStats getStats() {
+        public CacheStatsSnapshot getStats() {
             return stats;
         }
         

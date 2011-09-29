@@ -118,17 +118,17 @@ public class CacheInterceptor implements MethodInterceptor {
      * have not been garbage collected.
      * @return 
      */
-    public Map<String, Map<String, CacheStats>> getStatistics() {
-        Map<String, Map<String, CacheStats>> result = new HashMap<String, Map<String, CacheStats>>();
+    public Map<String, Map<String, CacheStatsSnapshot>> getStatistics(boolean estimateMemory) {
+        Map<String, Map<String, CacheStatsSnapshot>> result = new HashMap<String, Map<String, CacheStatsSnapshot>>();
         if (instances != null) {
             for (WeakReference<Cacheable> c : instances) {
                 if (c.get() != null) {
-                    Map<String, CacheStats> cs = c.get().__cacheData().getStatistics();
+                    Map<String, CacheStatsSnapshot> cs = c.get().__cacheData().getStatistics(estimateMemory);
                     String key = Unproxy.clazz(c.get().getClass()).getName();
                     if (result.get(key) == null) {
                         result.put(key, cs);
                     } else {
-                        for (Entry<String,CacheStats> e : cs.entrySet()) {
+                        for (Entry<String,CacheStatsSnapshot> e : cs.entrySet()) {
                             if (result.get(key).get(e.getKey()) != null) {
                                 result.get(key).put(e.getKey(), result.get(key).get(e.getKey()).plus(e.getValue()));
                             } else {
@@ -140,7 +140,7 @@ public class CacheInterceptor implements MethodInterceptor {
                 }
             }
             if (!singletonCache.isEmpty()) {
-                result.put("_SingletonCaches", singletonCache.getStatistics());
+                result.put("_SingletonCaches", singletonCache.getStatistics(estimateMemory));
             }            
         }
         return result;

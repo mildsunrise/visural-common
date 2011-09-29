@@ -123,10 +123,10 @@ public class CacheDataImpl implements CacheData {
         }
     }
     
-    public Map<String, CacheStats> getStatistics() {
-        Map<String, CacheStats> result = new HashMap<String, CacheStats>();
+    public Map<String, CacheStatsSnapshot> getStatistics(boolean estimateMemory) {
+        Map<String, CacheStatsSnapshot> result = new HashMap<String, CacheStatsSnapshot>();
         for (Entry<String, MethodCache> e : caches.entrySet()) {
-            result.put(e.getKey(), e.getValue().getStats());
+            result.put(e.getKey(), e.getValue().getStatsSnapshot(estimateMemory));
         }
         return result;
     }

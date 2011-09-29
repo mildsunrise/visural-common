@@ -16,6 +16,7 @@
  */
 package com.visural.common.cache.impl;
 
+import com.visural.common.ObjectSize;
 import com.visural.common.cache.Cache;
 import com.visural.common.cache.EvictionStrategy;
 import com.visural.common.cache.KeyProvider;
@@ -28,9 +29,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class MethodCache {
 
+    private static final Logger logger = Logger.getLogger(MethodCache.class.getName());
+
+    private final String cacheName;
     private final Cache settings;
     private Map<String, CacheEntry> cache;
     private PriorityQueue<CacheEntry> sortedEntries = null;
@@ -38,6 +44,7 @@ public class MethodCache {
     private final CacheStats stats = new CacheStats();
 
     public MethodCache(Cache settings, Method m, KeyProvider kp) {
+        this.cacheName = m.toString();
         this.settings = settings;        
         if (settings.maxEntries() <= 0) {
             throw new IllegalArgumentException(String.format("Method '%s' has @Cache with maxEntries <= 0", m));            
@@ -97,6 +104,18 @@ public class MethodCache {
 
     public CacheStats getStats() {
         return stats;
+    }
+    
+    public CacheStatsSnapshot getStatsSnapshot(boolean estimateMemory) {
+        int mem = 0;
+        if (estimateMemory) {
+            try {
+                mem = ObjectSize.estimate(cache);
+            } catch (Throwable t) {
+                logger.log(Level.WARNING, "Unable to determine cache size for MethodCache -> "+cacheName, t);
+            }
+        }
+        return new CacheStatsSnapshot(stats, mem);
     }
 
     public Cache getSettings() {

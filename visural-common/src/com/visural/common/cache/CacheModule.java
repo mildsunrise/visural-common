@@ -23,7 +23,7 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.matcher.Matchers;
 import com.visural.common.cache.impl.CacheDataImpl;
-import com.visural.common.cache.impl.CacheStats;
+import com.visural.common.cache.impl.CacheStatsSnapshot;
 import java.util.Map;
 
 /**
@@ -60,8 +60,8 @@ public class CacheModule extends AbstractModule {
         return interceptor;
     }
     
-    public Map<String, Map<String, CacheStats>> getStatistics() {
-        return interceptor.getStatistics();
+    public Map<String, Map<String, CacheStatsSnapshot>> getStatistics(boolean estimateMemory) {
+        return interceptor.getStatistics(estimateMemory);
     }
 
 }

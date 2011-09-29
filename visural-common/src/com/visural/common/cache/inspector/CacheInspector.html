@@ -56,6 +56,7 @@
                     <th>Total Load Time (s)</th>
                     <th>Average Load Time (ms)</th>
                     <th># Evictions</th>
+                    <th>Estimated Memory Usage*</th>
                 </tr>
             </thead>
             <tbody>
@@ -68,10 +69,14 @@
                     <td>$m.totalLoadTimeSeconds$</td>
                     <td>$m.averageLoadTimeMillis$</td>
                     <td>$m.stats.evictionCount$</td>
+                    <td>$m.stats.estimatedMemoryUsageMB$</td>
                 </tr>
             }$            
             </tbody>
         }$
         </table>
+        <p>
+            <i>* memory is estimated based on reflective, recursive scan of the object graph and is only roughly indicative of actual memory usage. If a cache shows (0) size, it indicates that the graph could not be estimated (check java logging).</i>
+        </p>
     </body>
 </html>
