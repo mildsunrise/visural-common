@@ -45,7 +45,7 @@
             <thead>
                 <tr>
                     <th colspan="100">
-                        <h2>$k$</h2>
+                        <h2>$k.name$ ($k.scope$)</h2>
                     </th>
                 </tr>
                 <tr>
@@ -55,6 +55,7 @@
                     <th>Miss Rate</th>
                     <th>Total Load Time (s)</th>
                     <th>Average Load Time (ms)</th>
+                    <th># Entries</th>
                     <th># Evictions</th>
                     <th>Estimated Memory Usage*</th>
                 </tr>
@@ -62,14 +63,22 @@
             <tbody>
             $classes.(k):{m|          
                 <tr class="$m.rowClass$">
-                    <td title="$m.method$"><b>$m.methodName$</b></td>
-                    <td>$m.stats.requestCount$</td>
-                    <td title="$m.stats.hitCount$ hits">$m.stats.hitRatePercent$</td>
-                    <td title="$m.stats.missCount$ misses">$m.stats.missRatePercent$</td>
+                    <td title="$m.method$">
+                        <b>$m.methodName$</b> ($m.stats.instanceCount$)<br/>
+                        timeToLive=$m.stats.settings.timeToLive$ 
+                        maxEntries=$m.stats.settings.maxEntries$
+                        evictionStrategy=$m.stats.settings.evictionStrategy$
+                        softValues=$m.stats.settings.softValues$
+                        singletonCache=$m.stats.settings.singletonCache$
+                    </td>
+                    <td>$m.stats.combinedStats.requestCount$</td>
+                    <td title="$m.stats.combinedStats.hitCount$ hits">$m.stats.combinedStats.hitRatePercent$</td>
+                    <td title="$m.stats.combinedStats.missCount$ misses">$m.stats.combinedStats.missRatePercent$</td>
                     <td>$m.totalLoadTimeSeconds$</td>
                     <td>$m.averageLoadTimeMillis$</td>
-                    <td>$m.stats.evictionCount$</td>
-                    <td>$m.stats.estimatedMemoryUsageMB$</td>
+                    <td>$m.stats.combinedStats.entries$</td>
+                    <td>$m.stats.combinedStats.evictionCount$</td>
+                    <td>$m.stats.combinedStats.estimatedMemoryUsageMB$</td>
                 </tr>
             }$            
             </tbody>

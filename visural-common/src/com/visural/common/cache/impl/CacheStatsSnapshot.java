@@ -31,18 +31,20 @@ public class CacheStatsSnapshot implements Serializable {
     private final AtomicLong loadCount;
     private final AtomicLong totalLoadTime;
     private final AtomicLong evictionCount;
+    private final int entries;
     private final int estimatedMemoryUsage;
        
-    public CacheStatsSnapshot(CacheStats stats, int estimatedMemoryUsage) {
-        this(stats.getHitCount().get(), stats.getMissCount().get(), stats.getLoadCount().get(), stats.getTotalLoadTime().get(), stats.getEvictionCount().get(), estimatedMemoryUsage);        
+    public CacheStatsSnapshot(CacheStats stats, int entries, int estimatedMemoryUsage) {
+        this(stats.getHitCount().get(), stats.getMissCount().get(), stats.getLoadCount().get(), stats.getTotalLoadTime().get(), stats.getEvictionCount().get(), entries, estimatedMemoryUsage);        
     }
 
-    public CacheStatsSnapshot(long hitCount, long missCount, long loadCount, long totalLoadTime, long evictionCount, int estimatedMemoryUsage) {
+    public CacheStatsSnapshot(long hitCount, long missCount, long loadCount, long totalLoadTime, long evictionCount, int entries, int estimatedMemoryUsage) {
         this.hitCount = new AtomicLong(hitCount);
         this.missCount = new AtomicLong(missCount);
         this.loadCount = new AtomicLong(loadCount);
         this.totalLoadTime = new AtomicLong(totalLoadTime);
         this.evictionCount = new AtomicLong(evictionCount);    
+        this.entries = entries;
         this.estimatedMemoryUsage = estimatedMemoryUsage;
     }
     
@@ -52,6 +54,7 @@ public class CacheStatsSnapshot implements Serializable {
                 loadCount.get()+other.loadCount.get(),
                 totalLoadTime.get()+other.totalLoadTime.get(),
                 evictionCount.get()+other.evictionCount.get(),
+                entries+other.entries,
                 estimatedMemoryUsage+other.estimatedMemoryUsage);
     }
     
@@ -61,7 +64,12 @@ public class CacheStatsSnapshot implements Serializable {
                 loadCount.get()-other.loadCount.get(),
                 totalLoadTime.get()-other.totalLoadTime.get(),
                 evictionCount.get()-other.evictionCount.get(),
+                entries-other.entries,
                 estimatedMemoryUsage-other.estimatedMemoryUsage);
+    }
+
+    public int getEntries() {
+        return entries;
     }
     
     public long getRequestCount() {

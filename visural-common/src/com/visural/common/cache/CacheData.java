@@ -16,7 +16,7 @@
  */
 package com.visural.common.cache;
 
-import com.visural.common.cache.impl.CacheStatsSnapshot;
+import com.visural.common.cache.impl.CacheStatsAggregated;
 import java.lang.reflect.Method;
 import java.util.Map;
 
@@ -36,7 +36,7 @@ public interface CacheData {
      * @param estimateMemory whether the object graph should be scanned to estimate memory usage
      * @return 
      */
-    Map<String, CacheStatsSnapshot> getStatistics(boolean estimateMemory); 
+    Map<String, CacheStatsAggregated> getStatistics(boolean estimateMemory); 
     
     /**
      * Invalidate any cached value for the given method call.

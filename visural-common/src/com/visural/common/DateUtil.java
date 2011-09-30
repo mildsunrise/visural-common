@@ -47,11 +47,11 @@ public class DateUtil {
      * @return the resulting formatted string
      */
     public static String formatDate(Date d, String format) {
-        return FastDateFormat.getInstance(format).format(d);
+        return d == null ? null : FastDateFormat.getInstance(format).format(d);
     }
 
     public static String formatDate(Date d, String format, TimeZone timeZone) {
-        return FastDateFormat.getInstance(format, timeZone).format(d);
+        return d == null ? null : FastDateFormat.getInstance(format, timeZone).format(d);
     }
 
     public static final String PATTERN_RFC1123 = "EEE, dd MMM yyyy HH:mm:ss zzz";

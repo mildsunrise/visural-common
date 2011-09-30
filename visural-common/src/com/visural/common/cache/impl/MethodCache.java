@@ -115,7 +115,7 @@ public class MethodCache {
                 logger.log(Level.WARNING, "Unable to determine cache size for MethodCache -> "+cacheName, t);
             }
         }
-        return new CacheStatsSnapshot(stats, mem);
+        return new CacheStatsSnapshot(stats, cache.size(), mem);
     }
 
     public Cache getSettings() {

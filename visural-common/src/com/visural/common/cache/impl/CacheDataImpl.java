@@ -24,8 +24,9 @@ import com.visural.common.cache.MethodCall;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Local cache implementation.
@@ -123,10 +124,14 @@ public class CacheDataImpl implements CacheData {
         }
     }
     
-    public Map<String, CacheStatsSnapshot> getStatistics(boolean estimateMemory) {
-        Map<String, CacheStatsSnapshot> result = new HashMap<String, CacheStatsSnapshot>();
-        for (Entry<String, MethodCache> e : caches.entrySet()) {
-            result.put(e.getKey(), e.getValue().getStatsSnapshot(estimateMemory));
+    public Map<String, CacheStatsAggregated> getStatistics(boolean estimateMemory) {
+        Map<String, CacheStatsAggregated> result = new HashMap<String, CacheStatsAggregated>();
+        Set<String> keys;
+        synchronized (this) {
+            keys = new HashSet<String>(caches.keySet());
+        }
+        for (String key : keys) {
+            result.put(key, new CacheStatsAggregated(caches.get(key).getSettings(), caches.get(key).getStatsSnapshot(estimateMemory)));
         }
         return result;
     }

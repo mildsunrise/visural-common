@@ -17,6 +17,7 @@
 package com.visural.common.cache.impl;
 
 import com.google.inject.Inject;
+import com.visural.common.EqualsWeakReference;
 import com.visural.common.Unproxy;
 import com.visural.common.cache.Cache;
 import com.visural.common.cache.Cacheable;
@@ -47,7 +48,7 @@ public class CacheInterceptor implements MethodInterceptor {
     @Inject KeyProvider keyProvider;
     @Inject CacheDataImpl singletonCache;
     
-    private Set<WeakReference<Cacheable>> instances = null;
+    private Set<EqualsWeakReference<Cacheable>> instances = null;
 
     public CacheInterceptor() {
     }
@@ -59,7 +60,7 @@ public class CacheInterceptor implements MethodInterceptor {
         Cacheable cacheable = (Cacheable) mi.getThis();
         if (instances != null) {
             synchronized (this) {
-                instances.add(new WeakReference<Cacheable>(cacheable));
+                instances.add(new EqualsWeakReference<Cacheable>(cacheable));
             }
         }
 
@@ -95,7 +96,7 @@ public class CacheInterceptor implements MethodInterceptor {
 
     public synchronized void setTrackReferences(boolean trackReferences) {
         if (instances == null && trackReferences) {
-            instances = new HashSet<WeakReference<Cacheable>>();
+            instances = new HashSet<EqualsWeakReference<Cacheable>>();
         } else if (instances != null && !trackReferences) {
             instances = null;
         }
@@ -103,7 +104,7 @@ public class CacheInterceptor implements MethodInterceptor {
     
     public synchronized void clearDeferencedInstances() {
         if (instances != null) {
-            Iterator<WeakReference<Cacheable>> i = instances.iterator();
+            Iterator<EqualsWeakReference<Cacheable>> i = instances.iterator();
             while (i.hasNext()) {
                 WeakReference<Cacheable> e = i.next();
                 if (e.get() == null) {
@@ -118,19 +119,23 @@ public class CacheInterceptor implements MethodInterceptor {
      * have not been garbage collected.
      * @return 
      */
-    public Map<String, Map<String, CacheStatsSnapshot>> getStatistics(boolean estimateMemory) {
-        Map<String, Map<String, CacheStatsSnapshot>> result = new HashMap<String, Map<String, CacheStatsSnapshot>>();
+    public Map<String, Map<String, CacheStatsAggregated>> getStatistics(boolean estimateMemory) {
+        Map<String, Map<String, CacheStatsAggregated>> result = new HashMap<String, Map<String, CacheStatsAggregated>>();
         if (instances != null) {
-            for (WeakReference<Cacheable> c : instances) {
+            Set<WeakReference<Cacheable>> instancesSnapshot;
+            synchronized (this) {
+                instancesSnapshot = new HashSet<WeakReference<Cacheable>>(instances);
+            }
+            for (WeakReference<Cacheable> c : instancesSnapshot) {
                 if (c.get() != null) {
-                    Map<String, CacheStatsSnapshot> cs = c.get().__cacheData().getStatistics(estimateMemory);
+                    Map<String, CacheStatsAggregated> cs = c.get().__cacheData().getStatistics(estimateMemory);
                     String key = Unproxy.clazz(c.get().getClass()).getName();
                     if (result.get(key) == null) {
                         result.put(key, cs);
                     } else {
-                        for (Entry<String,CacheStatsSnapshot> e : cs.entrySet()) {
+                        for (Entry<String,CacheStatsAggregated> e : cs.entrySet()) {
                             if (result.get(key).get(e.getKey()) != null) {
-                                result.get(key).put(e.getKey(), result.get(key).get(e.getKey()).plus(e.getValue()));
+                                result.get(key).put(e.getKey(), result.get(key).get(e.getKey()).combine(e.getValue()));
                             } else {
                                 result.get(key).put(e.getKey(), e.getValue());
                             }

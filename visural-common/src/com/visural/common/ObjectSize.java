@@ -60,17 +60,17 @@ public class ObjectSize {
      */
     public static int estimate(Object obj) {
         Set visited = new HashSet();
-        return estimate(obj, visited);
+        Map<Class, Field[]> classFieldMap = new HashMap();
+        return estimate(obj, visited, classFieldMap);
     }
 
-    private static int estimate(Object o, Set visited) {        
+    private static int estimate(Object o, Set visited, Map<Class, Field[]> classFieldMap) {        
         Class c = o.getClass();
         if (c.isPrimitive()) {
             return primitiveSizes.get(c);
         }
         // see if already visited or special case for string
-        if (visited.contains(o)
-                || (o instanceof String && ((String) o).intern() == o)) {
+        if (visited.contains(o) || internalPooled(o)) {
             return 0;
         }
         visited.add(o);
@@ -79,35 +79,41 @@ public class ObjectSize {
         if (c.isArray()) {
             total += arraySize;
             int len = Array.getLength(o);
-            if (len > 0 && c.isPrimitive()) {
+            if (c.getComponentType().isPrimitive()) {
                 // shortcut for primitize arrays
-                total += len * primitiveSizes.get(c);
+                total += len * primitiveSizes.get(c.getComponentType());
             } else {
                 for (int n = 0; n < len; n++) {
                     Object av = Array.get(o, n);
                     if (av != null) {
-                        total += refSize + estimate(av, visited);
+                        total += refSize + estimate(av, visited, classFieldMap);
                     }                    
                 }
             }
         } else {
             total += classSize;
             while (c != null) {
-                Field[] fields = c.getDeclaredFields();
+                // performance is constrained by Field duplication
+                boolean mark = false;
+                Field[] fields = classFieldMap.get(c);
+                if (fields == null) {
+                    fields = c.getDeclaredFields();
+                    for (Field f : fields) f.setAccessible(true);
+                    classFieldMap.put(c, fields);
+                }
                 for (Field f : fields) {
                     if (!Modifier.isStatic(f.getModifiers())) {
                         if (f.getType().isPrimitive()) {
                             total += primitiveSizes.get(f.getType());
                         } else {
-                            try {
-                                f.setAccessible(true);
+                            try {                                    
                                 Object fv = f.get(o);
                                 if (fv != null) {
-                                    total += refSize + estimate(fv, visited);
+                                    total += refSize + estimate(fv, visited, classFieldMap);
                                 }
                             } catch (IllegalAccessException ex) {
-                                throw new IllegalStateException("Unable to mark field '"+
-                                        f.getName()+"' on class '"+c.getName()+"' as accessible. "
+                                throw new IllegalStateException("Unable to read field '"+
+                                        f.getName()+"' on class '"+c.getName()+"'. "
                                         + "Unable to estimate object sizes.", ex);
                             }
                         }
@@ -123,4 +129,17 @@ public class ObjectSize {
         }
         return total;
     }
+
+    private static boolean internalPooled(Object o) {
+        return (o instanceof String && ((String) o).intern() == o) 
+                || (o instanceof Boolean && Boolean.valueOf(((Boolean) o).booleanValue()) == o)
+                || (o instanceof Byte && Byte.valueOf(((Byte) o).byteValue()) == o)
+                || (o instanceof Character && Character.valueOf(((Character) o).charValue()) == o)
+                || (o instanceof Short && Short.valueOf(((Short) o).shortValue()) == o)
+                || (o instanceof Integer && Integer.valueOf(((Integer) o).intValue()) == o)
+                || (o instanceof Long && Long.valueOf(((Long) o).longValue()) == o)
+                || (o instanceof Float && Float.valueOf(((Float) o).floatValue()) == o)
+                || (o instanceof Double && Double.valueOf(((Double) o).doubleValue()) == o)
+                ;            
+    }    
 }

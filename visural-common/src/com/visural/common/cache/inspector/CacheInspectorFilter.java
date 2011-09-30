@@ -16,11 +16,11 @@
  */
 package com.visural.common.cache.inspector;
 
+import com.visural.common.GuiceUtil;
 import com.visural.common.IOUtil;
 import com.visural.common.StringUtil;
 import com.visural.common.cache.CacheModule;
-import com.visural.common.cache.impl.CacheStats;
-import com.visural.common.cache.impl.CacheStatsSnapshot;
+import com.visural.common.cache.impl.CacheStatsAggregated;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -94,16 +94,18 @@ public class CacheInspectorFilter implements Filter {
                 out.close();
             } else {
                 StringTemplate t = htmlTemplate.getInstanceOf();                
-                Map<String, Map<String, CacheStatsSnapshot>> stats = module.get().getStatistics(true);
-                Map<String, List<StatEntry>> classes = new HashMap();
-                for (Entry<String, Map<String, CacheStatsSnapshot>> e : stats.entrySet()) {
+                Map<String, Map<String, CacheStatsAggregated>> stats = module.get().getStatistics(true);
+                Map<CacheClass, List<StatEntry>> classes = new HashMap();
+                for (Entry<String, Map<String, CacheStatsAggregated>> e : stats.entrySet()) {
                     List<StatEntry> methods = new ArrayList();
-                    classes.put(e.getKey(), methods);
-                    for (Entry<String, CacheStatsSnapshot> s : e.getValue().entrySet()) {
+                    classes.put(new CacheClass(e.getKey()), methods);
+                    for (Entry<String, CacheStatsAggregated> s : e.getValue().entrySet()) {
+                        String methodName = s.getKey();
                         Pattern p = Pattern.compile(".+"+Pattern.quote(e.getKey())+"\\.(.+)\\(");
                         Matcher m = p.matcher(s.getKey());
-                        m.find();
-                        String methodName = m.group(1);
+                        if (m.find()) {
+                            methodName = m.group(1);
+                        }
                         methods.add(new StatEntry(s.getKey().replace(e.getKey()+".", ""), methodName, s.getValue(), methods.size()%2 == 0 ? "a" : "b"));
                     }
                 }
@@ -120,13 +122,36 @@ public class CacheInspectorFilter implements Filter {
     public void destroy() {
     }    
     
+    private class CacheClass {
+        private final String name;
+        private String scope = "?";
+
+        public CacheClass(String name) {
+            this.name = name;
+            try {
+                Class c = Class.forName(name);
+                scope = GuiceUtil.getScopeDesc(module.get().getInjector(), c);
+            } catch (ClassNotFoundException ex) {
+                // ignore
+            }
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getScope() {
+            return scope;
+        }       
+    }
+    
     public static class StatEntry {
         private final String method;
         private final String methodName;
-        private final CacheStatsSnapshot stats;
+        private final CacheStatsAggregated stats;
         private final String rowClass;
 
-        public StatEntry(String method, String methodName, CacheStatsSnapshot stats, String rowClass) {
+        public StatEntry(String method, String methodName, CacheStatsAggregated stats, String rowClass) {
             this.method = method;
             this.methodName = methodName;
             this.stats = stats;
@@ -141,16 +166,16 @@ public class CacheInspectorFilter implements Filter {
             return methodName;
         }
 
-        public CacheStatsSnapshot getStats() {
+        public CacheStatsAggregated getStats() {
             return stats;
         }
         
         public String getTotalLoadTimeSeconds() {
-            return StringUtil.formatDecimal((double)stats.getTotalLoadTime().get()/1000000000.0, 2);
+            return StringUtil.formatDecimal((double)stats.getCombinedStats().getTotalLoadTime().get()/1000000000.0, 2);
         }
         
         public String getAverageLoadTimeMillis() {
-            return StringUtil.formatDecimal((double)stats.getAverageLoadTimeNanos()/1000000.0, 2);
+            return StringUtil.formatDecimal((double)stats.getCombinedStats().getAverageLoadTimeNanos()/1000000.0, 2);
         }
 
         public String getRowClass() {

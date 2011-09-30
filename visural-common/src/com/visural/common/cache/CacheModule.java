@@ -19,11 +19,13 @@ package com.visural.common.cache;
 import com.visural.common.cache.impl.StandardKeyProvider;
 import com.visural.common.cache.impl.CacheInterceptor;
 import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.matcher.Matchers;
 import com.visural.common.cache.impl.CacheDataImpl;
-import com.visural.common.cache.impl.CacheStatsSnapshot;
+import com.visural.common.cache.impl.CacheStatsAggregated;
 import java.util.Map;
 
 /**
@@ -38,9 +40,19 @@ import java.util.Map;
 public class CacheModule extends AbstractModule {    
 
     private final CacheInterceptor interceptor;
+    private Injector injector;    
 
     public CacheModule() {
         interceptor = new CacheInterceptor();
+    }
+
+    public Injector getInjector() {
+        return injector;
+    }
+
+    @Inject
+    public void setInjector(Injector injector) {
+        this.injector = injector;
     }
    
     @Override
@@ -49,6 +61,7 @@ public class CacheModule extends AbstractModule {
         bind(CacheData.class).to(CacheDataImpl.class);
         bindInterceptor(Matchers.subclassesOf(Cacheable.class), Matchers.annotatedWith(Cache.class), interceptor);
         requestInjection(interceptor);
+        requestInjection(this);
     }
 
     protected Class<? extends KeyProvider> getKeyProvider() {
@@ -60,7 +73,7 @@ public class CacheModule extends AbstractModule {
         return interceptor;
     }
     
-    public Map<String, Map<String, CacheStatsSnapshot>> getStatistics(boolean estimateMemory) {
+    public Map<String, Map<String, CacheStatsAggregated>> getStatistics(boolean estimateMemory) {
         return interceptor.getStatistics(estimateMemory);
     }
 
