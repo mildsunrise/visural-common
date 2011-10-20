@@ -243,16 +243,16 @@ public class StringUtil {
      * @return
      */
     public static String htmlEscape(String text, boolean convertNewlines) {
-        return htmlEscape(text, false, true);
+        return htmlEscape(text, false, convertNewlines);
     }
 
     /**
-     * Escaping mechanism for standard text-to-HTML. Will convert newlines to `<br/>`
+     * Escaping mechanism for standard text-to-HTML
      * @param text
      * @return
      */
     public static String htmlEscape(String text) {
-        return htmlEscape(text, true);
+        return htmlEscape(text, false);
     }
 
     /**
@@ -261,7 +261,7 @@ public class StringUtil {
      * @return
      */
     public static String htmlAttributeEscape(String text) {
-        return htmlEscape(text, true, true);
+        return htmlEscape(text, true, false);
     }
 
     /**
