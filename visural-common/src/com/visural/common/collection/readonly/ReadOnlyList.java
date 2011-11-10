@@ -128,4 +128,9 @@ public class ReadOnlyList<T> implements List<T> {
     public ReadOnlyList<T> subList(int fromIndex, int toIndex) {
         return new ReadOnlyList(baseCollection.subList(fromIndex, toIndex));
     }
+    
+    @Override
+    public String toString() {
+        return baseCollection.toString();
+    }        
 }

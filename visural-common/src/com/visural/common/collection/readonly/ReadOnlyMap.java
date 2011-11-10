@@ -86,4 +86,10 @@ public class ReadOnlyMap<U, V> implements Map<U, V> {
         // TODO: still possible to modify via - Entry.* but not a major issue
         return new ReadOnlySet(baseMap.entrySet());
     }
+    
+    @Override
+    public String toString() {
+        return baseMap.toString();
+    }    
+    
 }

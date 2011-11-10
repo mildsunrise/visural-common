@@ -87,4 +87,10 @@ public class ReadOnlyCollection<T> implements Collection<T> {
     public void clear() {
         throw new UnsupportedOperationException("Invalid operation - read only collection.");
     }
+    
+    @Override
+    public String toString() {
+        return baseCollection.toString();
+    }    
+    
 }

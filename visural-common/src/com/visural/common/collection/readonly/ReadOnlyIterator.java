@@ -46,4 +46,10 @@ public class ReadOnlyIterator<T> implements Iterator<T> {
     public void remove() {
         throw new UnsupportedOperationException("Invalid operation - read only collection.");
     }
+
+    @Override
+    public String toString() {
+        return iterator.toString();
+    }
+        
 }

@@ -70,4 +70,10 @@ public class ReadOnlyListIterator<T> implements ListIterator<T> {
     public void add(T e) {
         throw new UnsupportedOperationException("Invalid operation - read only collection.");
     }
+
+    @Override
+    public String toString() {
+        return iterator.toString();
+    }
+        
 }

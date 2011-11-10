@@ -33,8 +33,10 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -53,13 +55,83 @@ import java.util.zip.ZipOutputStream;
  */
 public class IOUtil {
 
-    public static byte[] md5(byte[] input) {
+    public static byte[] read(File f) throws IOException {
+        FileChannel in = null;
         try {
-            MessageDigest m = MessageDigest.getInstance("MD5");
-            m.update(input);
-            return m.digest();
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("MD5 algorithm unavailable.", ex);
+            in = (new FileInputStream(f)).getChannel();
+            MappedByteBuffer b = in.map(FileChannel.MapMode.READ_ONLY, 0, f.length());
+            byte[] data = new byte[(int)f.length()];
+            b.get(data);
+            return data;
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+        }
+    }
+    
+    public static void write(File f, byte[] data) throws IOException {
+        FileChannel out = null;
+        try {
+            out = (new FileOutputStream(f)).getChannel();
+            out.write(ByteBuffer.wrap(data));
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+        }
+    }
+
+    public static void copy(File s, File t) throws IOException {
+        FileChannel in = (new FileInputStream(s)).getChannel();
+        FileChannel out = (new FileOutputStream(t)).getChannel();
+        in.transferTo(0, s.length(), out);
+        in.close();
+        out.close();
+    }
+
+    public static byte[] getSHA1(InputStream is) {
+        return getDigest("SHA-1", is);
+    }
+
+    
+    public static byte[] getMD5(InputStream is) {
+        return getDigest("MD5", is);
+    }
+    
+    public static byte[] getSHA1(byte[] data) {
+        return getDigest("SHA-1", data);
+    }
+
+    
+    public static byte[] getMD5(byte[] data) {
+        return getDigest("MD5", data);
+    }
+    
+    private static byte[] getDigest(String digest, byte[] data) throws IllegalStateException {
+        try {
+            MessageDigest md;
+            md = MessageDigest.getInstance(digest);
+            md.update(data);
+            return md.digest();
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+    
+    private static byte[] getDigest(String digest, InputStream is) throws IllegalStateException {
+        try {
+            MessageDigest md;
+            md = MessageDigest.getInstance(digest);
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = is.read(buf)) != -1) {
+                md.update(buf, 0, r);
+            }
+            is.close();
+            return md.digest();
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
         }
     }
 

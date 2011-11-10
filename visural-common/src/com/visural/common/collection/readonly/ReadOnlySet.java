@@ -88,4 +88,10 @@ public class ReadOnlySet<T> implements Set<T> {
     public void clear() {
         throw new UnsupportedOperationException("Invalid operation - read only collection.");
     }
+
+    @Override
+    public String toString() {
+        return baseCollection.toString();
+    }    
+    
 }
