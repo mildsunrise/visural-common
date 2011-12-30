@@ -16,36 +16,21 @@
  */
 package com.visural.common;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.util.ArrayList;
+import java.io.*;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.apache.commons.io.IOUtils;
 
 /**
  * IO related utilities.
@@ -53,125 +38,95 @@ import java.util.zip.ZipOutputStream;
  * @version $Id: IOUtil.java 94 2010-09-29 06:17:07Z tibes80@gmail.com $
  * @author Richard Nichols
  */
-public class IOUtil {
+public class IOUtil extends IOUtils {
 
-    public static byte[] read(File f) throws IOException {
-        FileChannel in = null;
+    //unnecessary
+    public static byte[] readFile(File f) throws IOException {
+        FileInputStream in = null;
         try {
-            in = (new FileInputStream(f)).getChannel();
-            MappedByteBuffer b = in.map(FileChannel.MapMode.READ_ONLY, 0, f.length());
-            byte[] data = new byte[(int)f.length()];
-            b.get(data);
-            return data;
+            in = new FileInputStream(f);
+            return toByteArray(in);
         } finally {
-            if (in != null) {
-                in.close();
-            }
+            if (in != null) closeQuietly(in);
         }
     }
-    
+
+    //FILE I/O stuff
     public static void write(File f, byte[] data) throws IOException {
-        FileChannel out = null;
+        FileOutputStream out = null;
         try {
-            out = (new FileOutputStream(f)).getChannel();
-            out.write(ByteBuffer.wrap(data));
+            out = new FileOutputStream(f);
+            out.write(data);
         } finally {
-            if (out != null) {
-                out.close();
-            }
+            if (out != null) closeQuietly(out);
         }
     }
 
     public static void copy(File s, File t) throws IOException {
-        FileChannel in = (new FileInputStream(s)).getChannel();
-        FileChannel out = (new FileOutputStream(t)).getChannel();
-        in.transferTo(0, s.length(), out);
-        in.close();
-        out.close();
+        FileInputStream in = null;
+        FileOutputStream out = null;
+        try {
+            in = new FileInputStream(s);
+            out = new FileOutputStream(t);
+            copyLarge(in, out);
+        } finally {
+            if (in != null) closeQuietly(in);
+            if (out != null) closeQuietly(out);
+        }
     }
 
-    public static byte[] getSHA1(InputStream is) {
-        return getDigest("SHA-1", is);
+    //DIGEST stuff
+    public static byte[] getSHA1(InputStream is) throws IOException, NoSuchAlgorithmException {
+        return getDigest("SHA-1", is);//FIXME: should NoSuchAlgorithm be catched?
     }
 
-    
-    public static byte[] getMD5(InputStream is) {
+    public static byte[] getMD5(InputStream is) throws IOException, NoSuchAlgorithmException {
         return getDigest("MD5", is);
     }
-    
-    public static byte[] getSHA1(byte[] data) {
+
+    public static byte[] getSHA1(byte[] data) throws NoSuchAlgorithmException {
         return getDigest("SHA-1", data);
     }
 
-    
-    public static byte[] getMD5(byte[] data) {
+    public static byte[] getMD5(byte[] data) throws NoSuchAlgorithmException {
         return getDigest("MD5", data);
     }
-    
-    private static byte[] getDigest(String digest, byte[] data) throws IllegalStateException {
-        try {
-            MessageDigest md;
-            md = MessageDigest.getInstance(digest);
-            md.update(data);
-            return md.digest();
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-    
-    private static byte[] getDigest(String digest, InputStream is) throws IllegalStateException {
-        try {
-            MessageDigest md;
-            md = MessageDigest.getInstance(digest);
-            byte[] buf = new byte[8192];
-            int r;
-            while ((r = is.read(buf)) != -1) {
-                md.update(buf, 0, r);
-            }
-            is.close();
-            return md.digest();
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
-        }
+
+    private static byte[] getDigest(String digest, byte[] data) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance(digest);
+        return md.digest(data);
     }
 
-    public static <T extends Serializable> T readObject(Class<T> clazz, ClassLoader cl, InputStream is) {
-        ObjectInputStream ois = null;
-        try {
-            ois = new ClassLoaderObjectInputStream(cl, is);
-            T result = (T) ois.readObject();
-            return result;
-        } catch (Exception ex) {
-            String error = "An error occurred while reading a '"+clazz.getCanonicalName()+"' object.";
-            Logger.getLogger(IOUtil.class.getName()).log(Level.SEVERE, error, ex);
-            throw new IllegalStateException(error, ex);
-        } finally {
-            IOUtil.silentClose(IOUtil.class, ois);
-            IOUtil.silentClose(IOUtil.class, is);
-        }
+    private static byte[] getDigest(String digest, InputStream in) throws NoSuchAlgorithmException, IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);//FIXME: why this lenght?
+        IOUtils.copy(in, out);
+        return getDigest(digest, out.toByteArray());
     }
 
-    public static <T extends Serializable> void writeObject(OutputStream os , T obj) {
-        ObjectOutputStream oos = null;
+    //SERIALIZE stuff
+    
+    public static <T extends Serializable> T readObject(Class<T> clazz, ClassLoader cl, InputStream is) throws IOException {
+        ObjectInputStream ois = new ClassLoaderObjectInputStream(cl, is);
         try {
-            oos = new ObjectOutputStream(os);
-            oos.writeObject(obj);
-            oos.close();
-        } catch (IOException ex) {
-            String error = "An error occurred while writing a '"+obj.getClass().getCanonicalName()+"' object.";
-            Logger.getLogger(IOUtil.class.getName()).log(Level.SEVERE, error, ex);
-            throw new IllegalStateException(error, ex);
-        } finally {
-            IOUtil.silentClose(IOUtil.class, oos);
-            IOUtil.silentClose(IOUtil.class, os);
+            return (T) ois.readObject();
+        } catch (ClassNotFoundException ex) {
+            throw new RuntimeException(ex);
         }
+        //We don't close any stream, as we're only filtering.
     }
+
+    public static <T extends Serializable> void writeObject(OutputStream os, T obj) throws IOException {
+        new ObjectOutputStream(os).writeObject(obj);
+        //We don't close any stream, as we're only filtering.
+    }
+    
+    //DB stuff
 
     public static long getOracleSequenceNextval(Connection con, String sequenceName) throws SQLException {
         PreparedStatement ps = null;
         ResultSet rs = null;
         try {
-            ps = con.prepareStatement("select "+sequenceName+".nextval from dual");
+            ps = con.prepareStatement("select " + sequenceName + ".nextval from dual");
             rs = ps.executeQuery();
             if (rs.next()) {
                 return rs.getLong(1);
@@ -184,24 +139,8 @@ public class IOUtil {
         }
     }
 
-    public static void silentClose(Class myClass, InputStream is) {
-        try {
-            if (is != null) {
-                is.close();
-            }
-        } catch (IOException se) {
-            Logger.getLogger(myClass.getName()).log(Level.SEVERE, "Could not close InputStream in silentClose(...)", se);
-        }
-    }
-    public static void silentClose(Class myClass, OutputStream os) {
-        try {
-            if (os != null) {
-                os.close();
-            }
-        } catch (IOException se) {
-            Logger.getLogger(myClass.getName()).log(Level.SEVERE, "Could not close OutputStream in silentClose(...)", se);
-        }
-    }
+    //CLOSING stuff
+    
     public static void silentClose(Class myClass, PreparedStatement ps) {
         try {
             if (ps != null) {
@@ -211,6 +150,7 @@ public class IOUtil {
             Logger.getLogger(myClass.getName()).log(Level.SEVERE, "Could not close PreparedStatement in silentClose(...)", se);
         }
     }
+
     public static void silentClose(Class myClass, Connection con) {
         try {
             if (con != null) {
@@ -220,6 +160,7 @@ public class IOUtil {
             Logger.getLogger(myClass.getName()).log(Level.SEVERE, "Could not close Connection in silentClose(...)", se);
         }
     }
+
     public static void silentClose(Class myClass, ResultSet rs) {
         try {
             if (rs != null) {
@@ -230,167 +171,113 @@ public class IOUtil {
         }
     }
 
-    /**
-     * Reads an InputStream to a byte array. Does not close the stream.
-     * 
-     * @param os
-     * @return
-     * @throws IOException
-     */
-    public static byte[] readStream(InputStream is) throws IOException {
-        return readStream(is, false);
-    }
-
-    /**
-     * Reads an InputStream to a byte array. Optionally can close the stream
-     * once all data has been read.
-     *
-     * If closing fails an error is logged.
-     * 
-     * @param os
-     * @param closeStream
-     * @return
-     * @throws IOException
-     */
-    public static byte[] readStream(InputStream is, boolean closeStream) throws IOException {
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            int r;
-            while ((r = is.read()) != -1) {
-                baos.write(r);
-            }
-            return baos.toByteArray();
-        } finally {
-            if (closeStream) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    Logger.getLogger(IOUtil.class.getName()).log(Level.SEVERE, "Could not close stream in readStream()", e);
-                }
-            }
-        }
-    }
+    //FILE and URL I/O stuff
 
     /**
      * Takes the string provided and writes it to the given file. If the
      * file exists it will be overwritten.
-     * @param filename
-     * @param data
+     * @param file The file to write the data to
+     * @param data The string to write
      * @throws IOException
      */
-    public static void stringToFile(String filename, String data) throws IOException {
-        BufferedWriter writer = null;
+    public static void stringToFile(File file, String data) throws IOException {
+        FileWriter wr = null;
         try {
-            int pathIndex = Math.max(filename.lastIndexOf("/"), filename.lastIndexOf("\\"));
-            if (pathIndex > 0) {
-                String folderName = filename.substring(0, pathIndex);
-                new File(folderName).mkdirs();
-            }
-            writer = new BufferedWriter(new FileWriter(filename));
-            writer.write(data);
-            writer.flush();
-            writer.close();
+            wr = new FileWriter(file);
+            wr.append(data);
         } finally {
-            try {
-                writer.close();
-            } catch (IOException ex) {
-                Logger.getLogger(IOUtil.class.getName()).log(Level.SEVERE, "Could not close stream in stringToFile()", ex);
-            }
+            if (wr != null) closeQuietly(wr);
+        }
+    }
+
+    /**
+     * Read the contents of a given file and return as a String.
+     * 
+     * @param filename The path to the file to read.
+     * @return The (decoded) data.
+     * @throws IOException
+     */
+    public static String fileToString(String filename) throws FileNotFoundException, IOException {
+        return fileToString(new File(filename));
+    }
+
+    public static String fileToString(File file) throws FileNotFoundException, IOException {
+        FileReader r = null;
+        try {
+            r = new FileReader(file);
+            return toString(r);
+        } finally {
+            if (r != null) closeQuietly(r);
+        }
+    }
+
+    /**
+     * Reads the contents of the given file and returns them as a byte array.
+     * 
+     * @param filename The path to the file to read.
+     * @return The (binary) data.
+     * @throws IOException
+     */
+    public static byte[] readFile(String filename) throws IOException {
+        return readFile(new File(filename));
+    }
+
+    /**
+     * Reads the data of the given URL,
+     * decodes it with the platform encoding,
+     * and returns it as a String.
+     * 
+     * @param url The URL to read data from.
+     * @return The (decoded) data.
+     */
+    public static String urlToString(URL url) throws IOException {
+        InputStream in = null;
+        try {
+            in = url.openStream();
+            return toString(in);
+        } finally {
+            if (in != null) closeQuietly(in);
         }
     }
     
     /**
-     * Read the contents of the given file and return as a string
-     * @param filename
-     * @return
-     * @throws IOException
+     * Reads the data of the given URL,
+     * decodes it with the specified encoding,
+     * and returns it as a String.
+     * 
+     * @param url The URL to read data from.
+     * @param encoding The charset to use to decode the data.
+     * @return The (decoded) data.
      */
-    public static String fileToString(String filename) throws IOException {
-        File f = new File(filename);
-        if (f.exists()) {
-            BufferedReader inputReader = new BufferedReader(new FileReader(f));
-            String line = "";
-            StringBuffer result = new StringBuffer();
-            while ((line = inputReader.readLine()) != null) {
-                if (result.length() > 0) {
-                    result.append('\n');
-                }
-                result.append(line);
-            }
-            inputReader.close();
-            return result.toString();
-        } else {
-            throw new IOException("File " + filename + " does not exist.");
+    public static String urlToString(URL url, String encoding) throws IOException {
+        InputStream in = null;
+        try {
+            in = url.openStream();
+            return toString(in, encoding);
+        } finally {
+            if (in != null) closeQuietly(in);
         }
     }
 
     /**
-     * Reads the contents of the given file and returns it as a byte array
-     * @param filename
-     * @return
-     * @throws IOException
+     * Reads the contents of the given URL and returns them.
+     * 
+     * @param url The URL to read data from.
+     * @return The (binary) data.
      */
-    public static byte[] fileToByteArray(String filename) throws IOException {
-        byte[] baResult = null;
-        File f = new File(filename);
-        if (f.exists()) {
-            baResult = new byte[(int) f.length()];
-            BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f));
-            int n = 0;
-            int r = 0;
-            do {
-                r = bis.read();
-                if (r >= 0) {
-                    baResult[n++] = (byte) r;
-                }
-            } while (r >= 0);
-            bis.close();
+    public static byte[] readUrl(URL url) throws IOException {
+        InputStream in = null;
+        try {
+            in = url.openStream();
+            return toByteArray(in);
+        } finally {
+            if (in != null) closeQuietly(in);
         }
-        return baResult;
-    }
-
-    /**
-     * Reads the contents of the given URL and returns it as a string.
-     * @param url
-     * @return
-     */
-    public static String urlToString(URL url) throws IOException {
-        StringBuffer sb = new StringBuffer("");
-        InputStream is = url.openStream();
-        int n = 0;
-        do {
-            n = is.read();
-            if (n >= 0) {
-                sb.append((char) n);
-            }
-        } while (n >= 0);
-        is.close();
-        return sb.toString();
-    }
-
-
-    /**
-     * Reads the contents of the given URL and returns it as a string.
-     * @param url
-     * @return
-     */
-    public static byte[] urlToBytes(URL url) throws IOException {
-        InputStream is = url.openStream();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        int n = 0;
-        do {
-            n = is.read();
-            if (n >= 0) {
-                baos.write(n);
-            }
-        } while (n >= 0);
-        is.close();
-        baos.close();
-        return baos.toByteArray();
     }
 
     /**
      * Zips the contents of the given folder into the given zip file.
+     * 
      * @param destinationZipFilename
      * @param folderToZip
      * @param recurseSubFolders
@@ -412,17 +299,29 @@ public class IOUtil {
         ArrayList<ZipItem> alZI = new ArrayList<ZipItem>();
         zipFolderWorker(alZI, fFolder.getPath(), fFolder.getPath(), recurseSubFolders);
 
-        // create zip
-        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(fOut));
-        for (int n = 0; n < alZI.size(); n++) {
-            byte[] ba = fileToByteArray(alZI.get(n).fileName);
-            ZipEntry ze = new ZipEntry(alZI.get(n).zipName);
-            ze.setTime(System.currentTimeMillis());
-            zos.putNextEntry(ze);
-            zos.write(ba);
-            zos.closeEntry();
+        ZipOutputStream out = null;
+        try {
+            // create zip
+            out = new ZipOutputStream(new FileOutputStream(fOut));
+            for (int n = 0; n < alZI.size(); n++) {
+                FileInputStream in = null;
+                try {
+                    ZipEntry ze = new ZipEntry(alZI.get(n).zipName);
+                    ze.setTime(System.currentTimeMillis());
+                    out.putNextEntry(ze);
+                    //Open the source file
+                    in = new FileInputStream(alZI.get(n).fileName);
+                    //Copy the data
+                    copy(in, out);
+                    out.closeEntry();
+                } finally {
+                    if (in != null) closeQuietly(in);
+                }
+            }
+        out.close();
+        } finally {
+            if (out != null) closeQuietly(out);
         }
-        zos.close();
     }
 
     private static void zipFolderWorker(ArrayList<ZipItem> zipItems, String currentFolder, String baseFolder, boolean recurse) {
@@ -447,30 +346,23 @@ public class IOUtil {
     }
 
     private static class ZipItem {
-
         public String fileName;
         public String zipName;
     }
 
     /**
-     * Deletes all files and folder under the path specified.
-     * @param folder
-     * @throws IOException
+     * Recursively deletes this file (and its childs, if it's a directory).
+     * 
+     * @param folder The file or directory to delete.
+     * @throws IOException if an error occurs.
      */
-    public static void nukeFolder(String folder) throws IOException {
-        File f = new File(folder);
-        if (f.exists() && f.isDirectory()) {
-            File[] fa = f.listFiles();
-            for (int n = 0; n < fa.length; n++) {
-                if (fa[n].isDirectory()) {
-                    nukeFolder(fa[n].getPath());
-                } else {
-                    if (!fa[n].delete()) {
-                        throw new IOException("Failed nuking " + folder + " - could not delete file '" + f.getPath() + "'");
-                    }
-                }
-            }
+    public static void delete(File f) throws IOException {
+        if (f.exists()) {
+            if (f.isDirectory())
+                for (File child : f.listFiles()) delete(child);
+            
+            if (!f.delete())
+                throw new IOException("Could not delete "+f.getPath());
         }
-        f.delete();
     }
 }

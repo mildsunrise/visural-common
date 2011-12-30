@@ -24,6 +24,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.Reader;
 import java.io.Serializable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -56,7 +57,7 @@ public class SimpleDataTable implements Serializable {
     private List rows;
     private boolean valid;
 
-    SimpleDataTable() {
+    private SimpleDataTable() {
         valid = false;
     }
 
@@ -297,31 +298,32 @@ public class SimpleDataTable implements Serializable {
 
     /**
      * 
-     * @param sFilename 
+     * @param filename 
      * @return 
      */
-    public int readDelimitedFile(String sFilename) throws FileNotFoundException, IOException {
-        return readDelimitedFile(sFilename, true, false, false);
+    public int readDelimitedFile(String filename) throws FileNotFoundException, IOException {
+        return readDelimitedFile(filename, true, false, false);
     }
 
-    public int readDelimitedFile(BufferedReader brInput) throws IOException {
-        return readDelimitedFile(brInput, true, false, false);
+    public int readDelimitedFile(Reader input) throws IOException {
+        return readDelimitedFile(input, true, false, false);
     }
 
-    public int readDelimitedFile(BufferedReader brInput, boolean bReadHeader, boolean bQuoted, boolean bPreprocess) throws IOException {
+    public int readDelimitedFile(Reader input, boolean bReadHeader, boolean bQuoted, boolean bPreprocess) throws IOException {
+        BufferedReader binput = new BufferedReader(input);
         int nRead = 0;
         String sLine;
         /* if the file is ready to read.. */
-        if (brInput.ready()) {
+        if (binput.ready()) {
             if (bReadHeader) {
                 /* read the header row */
-                processHeader(brInput.readLine());
+                processHeader(binput.readLine());
             }
 
             /* read data rows */
             rows = new ArrayList();
-            while (brInput.ready()) {
-                sLine = brInput.readLine();
+            while (binput.ready()) {
+                sLine = binput.readLine();
                 /* attempt to process read line, if error then display the bogus row */
                 if (processRow(sLine, bQuoted)) {
                     nRead++;
@@ -341,20 +343,20 @@ public class SimpleDataTable implements Serializable {
      * Displays all invalid rows.
      * Returns the number of valid rows stored.
      * @return the number of rows that were read from the file
-     * @param bReadHeader 
-     * @param bQuoted 
-     * @param bPreprocess 
-     * @param sFilename The filename to read
+     * @param readHeader 
+     * @param quoted 
+     * @param preprocess 
+     * @param filename The filename to read
      */
-    public int readDelimitedFile(String sFilename, boolean bReadHeader, boolean bQuoted, boolean bPreprocess) throws FileNotFoundException, IOException {
+    public int readDelimitedFile(String filename, boolean readHeader, boolean quoted, boolean preprocess) throws FileNotFoundException, IOException {
         int nRead = 0;
 
-        File fInput = new File(sFilename);
+        File fInput = new File(filename);
 
         if (fInput.exists()) {
             BufferedReader brInput = new BufferedReader(new FileReader(fInput));
 
-            nRead = readDelimitedFile(brInput, bReadHeader, bQuoted, bPreprocess);
+            nRead = readDelimitedFile(brInput, readHeader, quoted, preprocess);
 
             brInput.close();
         }

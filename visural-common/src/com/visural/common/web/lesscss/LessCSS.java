@@ -17,65 +17,112 @@
 package com.visural.common.web.lesscss;
 
 import com.visural.common.IOUtil;
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.mozilla.javascript.Callable;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
 import org.mozilla.javascript.ScriptableObject;
 
 public class LessCSS {
 
-    private final String lessjs;
-    private final String runjs;
-    private final ContextFactory cf;
+    public final static String LESSJS_LOCATION =
+            "com/visural/common/web/lesscss/less.js";
+    public final static String BUNDLED_CHARSET = "UTF-8";
+
+
     private final Context c;
     private final ScriptableObject so;
 
-    public LessCSS() {
+    /**
+     * Initializes a new Less.JS engine from the given scriptfile.
+     **/
+    public LessCSS(Reader lessjs) {
         try {
-            lessjs = IOUtil.urlToString(getClass().getClassLoader().getResource("com/visural/common/web/lesscss/less.js"));
-            runjs = IOUtil.urlToString(getClass().getClassLoader().getResource("com/visural/common/web/lesscss/run.js"));
-            cf = new ContextFactory();
-            c = cf.enterContext();
+            InputStream runjs = getClass().getClassLoader().getResourceAsStream("com/visural/common/web/lesscss/run.js");
+            c = new ContextFactory().enterContext();
             so = c.initStandardObjects();
             c.setOptimizationLevel(9);
-            c.evaluateString(so, lessjs, "less.js", 1, null);
-            c.evaluateString(so, runjs, "run.js", 1, null);
+            //FIXME: check if eval went well
+            c.evaluateReader(so, lessjs, "less.js", 1, null);
+            c.evaluateReader(so, new InputStreamReader(runjs), "run.js", 1, null);
         } catch (IOException ex) {
             throw new IllegalStateException("Failed reading javascript less.js", ex);
         }
     }
 
-    public String less(InputStream input) {
-        String data = "Not initialised.";
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            int r;
-            while ((r = input.read()) != -1) {
-                baos.write(r);
-            }
-            input.close();
-            data = new String(baos.toByteArray());
+    /**
+     * Initializes a new Less.JS engine (bundled).
+     **/
+    public LessCSS() {
+        this(new InputStreamReader(
+                LessCSS.class.getResourceAsStream(LESSJS_LOCATION),
+                Charset.forName(BUNDLED_CHARSET)));
+    }
 
-            String lessitjs = "lessIt(\""+data.replace("\"", "\\\"").replace("\n", "").replace("\r", "")+"\");";
-            String result = c.evaluateString(so, lessitjs, "lessitjs.js", 1, null).toString();
-            return result;
-        } catch (Exception e) {
-            throw new IllegalStateException("LessCSS failed: "+data, e);
+    public String lessFile(File file, boolean compress, boolean yuicompress,
+                       int optimization, List<File> includes) throws FileNotFoundException, IOException {
+        String data = IOUtil.fileToString(file);
+        
+        return less(data, file, compress, yuicompress, optimization, includes);
+    }
+    
+    /**
+     * The complete method for calling the Less engine.
+     * 
+     * @param data The LESS code to process.
+     * @param file The file in which the Less code resides.
+     *             Set it to null if you only want to Less (unlocated) data.
+     * @param includes A list of additional include directories, for @import
+     *                 rules. Can be null.
+     * @param compress Should the generated CSS be compressed with the builtin compressor?
+     * @param yuicompress Should the generated CSS be compressed with the YUI compressor?
+     * @param optimization The optimization level. On the current version this
+     *                     can be either 0, 1 or 2.
+     * @return The resulting CSS code.
+     **/
+    public String less(String data, File file, boolean compress, boolean yuicompress,
+                       int optimization, List<File> includes) {
+        if (includes == null) includes = new ArrayList<File>();
+        
+        String path = "-";
+        if (file != null) {
+            path = file.getPath();
+            includes.add(file.getParentFile());
         }
+
+        Object[] args = {data, path,
+                         c.newArray(so, includes.toArray()),
+                         compress, yuicompress, optimization};
+        
+        Callable func = (Callable) so.get("lessIt", so);
+        return (String) func.call(c, so, null, args);//TODO: catch
+    }
+    
+    public String lessData(String data, boolean compress, boolean yuicompress,
+                           int optimization, List<File> includes) {
+        return less(data, null, compress, yuicompress, optimization, includes);
     }
 
     public static void main(String args[]) throws IOException {
         if (args.length < 2) {
             System.err.println("Please specify a [source.less] and a [target.css]");
-        } else {
-            LessCSS less = new LessCSS();
-            FileInputStream fis = new FileInputStream(args[0]);
-            String result = less.less(fis);
-            fis.close();
-            IOUtil.stringToFile(args[1], result);
+            System.exit(1);
         }
+
+        File src = new File(args[0]);
+        File dst = new File(args[1]);
+
+        LessCSS less = new LessCSS();
+        String result = less.lessFile(src, true,true, 1, null);
+        IOUtil.stringToFile(dst, result);
     }
 }

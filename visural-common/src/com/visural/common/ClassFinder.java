@@ -346,7 +346,7 @@ public class ClassFinder {
     }
 
     /**
-     * Paths need cleaning up, especially in windows
+     * FIXME: Paths need cleaning up, especially in windows
      */
     protected String sanitizePath(String path) {
         String tmp = path;

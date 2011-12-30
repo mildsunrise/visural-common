@@ -53,6 +53,7 @@ public class CacheInterceptor implements MethodInterceptor {
     public CacheInterceptor() {
     }
     
+    @Override
     public Object invoke(MethodInvocation mi) throws Throwable {        
         singletonCache.markAsSingletonCache(); // TODO: only needed to be called once, but no suitable place to put it.
         

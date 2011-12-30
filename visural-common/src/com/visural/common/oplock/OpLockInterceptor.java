@@ -29,7 +29,7 @@ import org.aopalliance.intercept.MethodInvocation;
 
 
 /**
- * TODO: Performance of this could be increase by separating map into method name lookup lock collections
+ * TODO: Performance of this could be increased by separating map into method name lookup lock collections
  * 
  * @version $Id: OpLockInterceptor.java 57 2010-05-31 03:51:03Z tibes80@gmail.com $
  * @author Richard Nichols
@@ -47,6 +47,7 @@ public class OpLockInterceptor implements MethodInterceptor {
         this.lockTimeout = lockTimeout;
     }
 
+    @Override
     public Object invoke(MethodInvocation mi) throws Throwable {       
         MethodCall call = MethodCall.fromInvocation(mi);
         String key = Unproxy.clazz(call.getMethod().getDeclaringClass()).getName()+"."+call.getMethod().getName()+"#"+keyProvider.getKey(call);
@@ -59,8 +60,8 @@ public class OpLockInterceptor implements MethodInterceptor {
                 }
                 try {
                     Thread.sleep(5);
-                } catch (Throwable t) {
-                    logger.log(Level.WARNING, "Thread.sleep() failed", t);
+                } catch (InterruptedException t) {
+                    logger.log(Level.WARNING, "Thread was interrupted while sleeping.", t);
                 }
             }
             // got lock

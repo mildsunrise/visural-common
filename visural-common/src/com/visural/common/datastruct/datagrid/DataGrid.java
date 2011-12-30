@@ -21,6 +21,7 @@ import com.visural.common.datastruct.SimpleDataTable;
 import java.util.Vector;
 import java.util.Collections;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -197,7 +198,7 @@ public class DataGrid implements Serializable {
     }
 
     public SimpleDataTable toDataTable() {
-        Vector vHeader = new Vector();
+        List vHeader = new ArrayList();
         for (int nH = 0; nH < this.header.getNumFields(); nH++) {
             vHeader.add(header.getFieldType(nH).getFieldName());
         }

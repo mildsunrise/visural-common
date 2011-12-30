@@ -77,12 +77,14 @@ public class CacheInspectorFilter implements Filter {
         module.getInterceptor().setTrackReferences(true);
     }
     
+    @Override
     public void init(FilterConfig fc) throws ServletException {
         if (StringUtil.isNotBlankStr(fc.getInitParameter(FILTER_PATH_PARAM))) {
             filterPath = fc.getInitParameter(FILTER_PATH_PARAM);
         }
     }
 
+    @Override
     public void doFilter(ServletRequest sr, ServletResponse sr1, FilterChain fc) throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest)sr;
         HttpServletResponse res = (HttpServletResponse)sr1;
@@ -119,6 +121,7 @@ public class CacheInspectorFilter implements Filter {
         }
     }
 
+    @Override
     public void destroy() {
     }    
     

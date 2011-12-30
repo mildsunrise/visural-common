@@ -129,12 +129,13 @@ public class DataUri {
 
     public static void main(String[] args) throws IOException {
         if (args.length != 2) {
-            System.out.println("Provide input path and output path on command line.");
-            return;
+            System.err.println("Provide input path and output path on command line.");
+            System.exit(1);
         }
+
         File f = new File(args[0]);
-        String css = IOUtil.fileToString(args[0]);
-        IOUtil.stringToFile(args[1], convert(Mode.CSS, css, new RelativeFileResolver(f.getParentFile().getCanonicalPath())));
+        String css = IOUtil.fileToString(f);
+        IOUtil.stringToFile(new File(args[1]), convert(Mode.CSS, css, new RelativeFileResolver(f.getParentFile().getCanonicalPath())));
     }
 
     public enum Mode {

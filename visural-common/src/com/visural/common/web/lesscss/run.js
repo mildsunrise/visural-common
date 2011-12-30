@@ -1,9 +1,26 @@
-var lessIt = function(css) {
+var lessIt = function(data, input, includes, compress, yuicompress, optlevel) {
     var result;
-    var parser = new less.Parser();
-
-    parser.parse(css, function (e, root) {
-        result = root.toCSS();
+    var error;
+    
+    new(less.Parser)({
+        paths: includes,
+        optimization: optlevel,
+        filename: input
+    }).parse(data, function (err, tree) {
+        error = err;
+        try {
+            css = tree.toCSS({
+                compress: compress,
+                yuicompress: yuicompress
+            });
+            result = css;
+        } catch (e) {
+            error = err;
+        }
     });
+    
+    if (error) {
+        throw error;
+    }
     return result;
 };

@@ -14,9 +14,12 @@
  *  limitations under the License.
  *  under the License.
  */
+
 package com.visural.common.web.transform;
 
+import com.sun.xml.internal.fastinfoset.tools.FI_DOM_Or_XML_DOM_SAX_SAXEvent;
 import com.visural.common.DateUtil;
+import com.visural.common.IOUtil;
 import com.visural.common.web.client.WebClient;
 import com.visural.common.web.transform.DataUri.Mode;
 import java.io.ByteArrayOutputStream;
@@ -38,6 +41,8 @@ import com.visural.common.web.lesscss.LessCSS;
 import com.yahoo.platform.yui.compressor.CssCompressor;
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -46,6 +51,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.servlet.ServletContext;
+import org.apache.commons.io.IOUtils;
 import org.mozilla.javascript.ErrorReporter;
 import org.mozilla.javascript.EvaluatorException;
 
@@ -61,6 +68,9 @@ import org.mozilla.javascript.EvaluatorException;
  * @author Richard Nichols
  */
 public class ResourceTransformFilter implements Filter {
+    protected FilterConfig config;
+
+    //TODO FUTURE: implement LessCompressMethod, LessOptimization, InlineURITransform, CSSCompress, JSCompress, LessEngine, ...
 
     private final Map<Request, Response> transformCache = new HashMap<Request, Response>();
 
@@ -74,7 +84,9 @@ public class ResourceTransformFilter implements Filter {
         CSS_YUI_COMPRESS
     }
 
+    @Override
     public void init(FilterConfig fc) throws ServletException {
+        this.config = fc;
     }
     
     protected void addJavascriptCompression(String urlLower, List<Transform> result) {
@@ -120,92 +132,133 @@ public class ResourceTransformFilter implements Filter {
         return result;
     }
 
-    public void doFilter(ServletRequest sr, ServletResponse sr1, FilterChain fc) throws IOException, ServletException {
-        HttpServletRequest req = (HttpServletRequest) sr;
-        HttpServletResponse res = (HttpServletResponse) sr1;
+    @Override
+    public void doFilter(ServletRequest greq, ServletResponse gres, FilterChain fc) throws IOException, ServletException {
+        //Check we're dealing with HTTP requests
+        if (!((greq instanceof HttpServletRequest) && (gres instanceof HttpServletResponse))) {
+            fc.doFilter(greq, gres);
+            return;
+        }
+        HttpServletRequest req = (HttpServletRequest) greq;
+        HttpServletResponse res = (HttpServletResponse) gres;
+        String reqURL = req.getRequestURL().toString();
+        
+        //Detect the client
         WebClient client = WebClient.detect(req);
 
+        //Get the list of transforms
         List<Transform> transforms = getTransforms(req, client);
+        
+        //If there are no transforms to apply
         if (transforms == null || transforms.isEmpty()) {
-            fc.doFilter(sr, sr1);
-        } else {
-            Request currentRequest = new Request(req.getRequestURI(), transforms);
-            String requestURL = req.getRequestURL().toString();
-            Response response = transformCache.get(currentRequest);
-            if (response == null) {
-                OrigResponseWrapper wrap = new OrigResponseWrapper(res);
-                fc.doFilter(sr, wrap);
-                if (wrap.writer != null ) wrap.writer.flush();
-                wrap.sos.flush();
-                String returnData = new String(wrap.stream.toByteArray());
-                for (Transform transform : transforms) {
-                    switch (transform) {
-                        case HTML_DATAURI:
-                            if (wrap.contentType == null) wrap.contentType = "text/html";
-                            returnData = newDataUri(Mode.HTML,
-                                    returnData,
-                                    new URLBasedResolver(getURLFolder(requestURL)),
-                                    getDataUriMaxResourceSize(req, client))
-                                    .convert();
-                            break;
+            //Pass the request directly
+            fc.doFilter(req,res);
+            return;
+        }
+        
+        //Look at the cache
+        Request request = new Request(reqURL, transforms);
+        Response response = transformCache.get(request);
+        
+        //If no entry is found //TODO FUTURE: check modified date
+        if (response == null) {
 
-                        case CSS_DATAURI:
-                            if (wrap.contentType == null) wrap.contentType = "text/css";
-                            returnData = newDataUri(Mode.CSS,
-                                    returnData,
-                                    new URLBasedResolver(getURLFolder(requestURL)),
-                                    getDataUriMaxResourceSize(req, client))
-                                    .convert();
-                            break;
+            //Wrap and process the original response
+            OrigResponseWrapper wrap = new OrigResponseWrapper(res);
+            fc.doFilter(req, wrap);
 
-                        case CSS_MHTML_SEPARATE:
-                        case CSS_MHTML_SINGLE:                            
-                            CSSMHTML.ConversionResult result = new CSSMHTML(returnData, new URLBasedResolver(requestURL.substring(0, requestURL.lastIndexOf('/') + 1)), requestURL).convert();
-                            if (transform.equals(Transform.CSS_MHTML_SEPARATE)) {
-                                if (wrap.contentType == null) wrap.contentType = "text/css";
-                                // TODO this doesn't take into account the transforms array in URL
-                                returnData = result.mhtmlRefCSS;
-                                Response sep = new Response(CSSMHTML.getContentType(), wrap.headers, result.mhtml);
-                                transformCache.put(new Request(req.getRequestURI() + CSSMHTML.SEP_MHTML_POSTFIX, Arrays.asList(Transform.CSS_MHTML_SEPARATE)), sep);
-                            } else {
-                                wrap.contentType = CSSMHTML.getContentType();
-                                returnData = result.compositeCSS;
-                            }
-                            break;
+            //If there was an error so the response is commited, return
+            if (res.isCommitted()) return;
+            
+            //Decode the original data using the specified charset
+            String data = IOUtils.toString(wrap.createFakePipe(), wrap.getCharacterEncoding());
+            String ctype = wrap.getContentType();
+            Map<String, String> headers = wrap.getFakeHeaders();
 
-                        case CSS_YUI_COMPRESS:                            
-                            if (wrap.contentType == null) wrap.contentType = "text/css";
-                            returnData = yuiCompressCSS(returnData);
-                            break;
+            for (Transform transform : transforms) {
+                switch (transform) {
+                    case HTML_DATAURI:
+                        if (ctype == null) {
+                            ctype = "text/html";
+                        }
+                        data = newDataUri(Mode.HTML,
+                                data,
+                                new URLBasedResolver(getURLFolder(reqURL)),
+                                getDataUriMaxResourceSize(req, client)).convert();
+                        break;
 
-                        case JS_YUI_COMPRESS:
-                            if (wrap.contentType == null) wrap.contentType = "text/javascript";
-                            returnData = yuiCompressJS(requestURL, returnData);
-                            break;
+                    case CSS_DATAURI:
+                        if (ctype == null) ctype = "text/css";
+                        data = newDataUri(Mode.CSS,
+                                data,
+                                new URLBasedResolver(getURLFolder(reqURL)),
+                                getDataUriMaxResourceSize(req, client)).convert();
+                        break;
 
-                        case LESSCSS:
-                            if (wrap.contentType == null) wrap.contentType = "text/css";
-                            returnData = new LessCSS().less(new ByteArrayInputStream(returnData.getBytes()));
-                            break;
+                    case CSS_MHTML_SEPARATE:
+                    case CSS_MHTML_SINGLE:
+                        CSSMHTML.ConversionResult result = new CSSMHTML(data, new URLBasedResolver(reqURL.substring(0, reqURL.lastIndexOf('/') + 1)), reqURL).convert();
+                        if (transform.equals(Transform.CSS_MHTML_SEPARATE)) {
+                            if (ctype == null) ctype = "text/css";
+                            // TODO this doesn't take into account the transforms array in URL
+                            data = result.mhtmlRefCSS;
+                            Response sep = new Response(CSSMHTML.getContentType(), headers,
+                                    IOUtil.toByteArray(new StringReader(result.mhtml), res.getCharacterEncoding()));
+                            transformCache.put(new Request(req.getRequestURI() + CSSMHTML.SEP_MHTML_POSTFIX, Arrays.asList(Transform.CSS_MHTML_SEPARATE)), sep);
+                        } else {
+                            ctype = CSSMHTML.getContentType();
+                            data = result.compositeCSS;
+                        }
+                        break;
 
-                        default:
-                            throw new UnsupportedOperationException("Not implemented - " + transform.name());
-                    }
-                }
-                if (!transforms.contains(Transform.HTML_DATAURI)) {
-                    response = new Response(wrap.contentType, wrap.headers, returnData);
-                    transformCache.put(currentRequest, response);
-                }
-                res.setContentType(wrap.contentType);
-            } else {
-                res.setContentType(response.getContentType());
-                for (String key : response.getHeaders().keySet()) {
-                    res.setHeader(key, response.getHeaders().get(key));
+                    case CSS_YUI_COMPRESS:
+                        if (ctype == null) ctype = "text/css";
+                        data = yuiCompressCSS(data);
+                        break;
+
+                    case JS_YUI_COMPRESS:
+                        if (ctype == null) ctype = "text/javascript";
+                        data = yuiCompressJS(reqURL, data);
+                        break;
+
+                    case LESSCSS:
+                        if (ctype == null || ctype.equals("text/less")) ctype = "text/css";
+                        //Try to locate the .less file
+                        String path = req.getServletPath();
+                        String rPath = config.getServletContext().getRealPath(path);
+                        File rFile = null;
+                        if (rPath != null) rFile = new File(rPath);
+                        //Call the less method
+                        LessCSS engine = new LessCSS();
+                        data = engine.less(data, rFile, true, true, 2, null);
+                        break;
+
+                    default:
+                        throw new UnsupportedOperationException("Not implemented - " + transform.name());
                 }
             }
-            res.setContentLength(response.getReturnData().getBytes().length);
-            res.getWriter().print(response.getReturnData());
+            //Set the content type
+            res.setContentType(ctype);
+
+            if (transforms.contains(Transform.HTML_DATAURI)) return; //FIXME: ???!
+
+            //Encode data
+            byte[] bdata = IOUtil.toByteArray(new StringReader(data), wrap.getCharacterEncoding());
+            
+            //Cache the (binary) data
+            response = new Response(ctype, headers, bdata);
+            transformCache.put(request, response);
         }
+        
+        //Set headers
+        Map<String, String> headers = response.getHeaders();
+        for (String key : headers.keySet())
+            res.setHeader(key, headers.get(key));
+        //Set content length & type
+        res.setContentLength(response.getReturnData().length);
+        res.setContentType(response.getContentType());
+        //Write content
+        res.getOutputStream().write(response.getReturnData());
     }
 
     /**
@@ -220,89 +273,7 @@ public class ResourceTransformFilter implements Filter {
         return new DataUri(mode, CSS, returnData, maxResourceSize);
     }
 
-    private class OrigResponseWrapper extends HttpServletResponseWrapper {
-
-        protected final HttpServletResponse origResponse;
-        protected String contentType = null;
-        protected Map<String,String> headers = new HashMap<String,String>();
-        protected ServletOutputStream sos = null;
-        protected ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        protected PrintWriter writer = null;
-
-        public OrigResponseWrapper(HttpServletResponse response) {
-            super(response);
-            origResponse = response;
-        }
-
-        @Override
-        public void setContentType(String type) {
-            super.setContentType(type);
-            contentType = type;
-        }
-
-        @Override
-        public void addDateHeader(String name, long date) {
-            super.addDateHeader(name, date);
-            headers.put(name, DateUtil.formatHttpDate(date));
-        }
-
-        @Override
-        public void addIntHeader(String name, int value) {
-            super.addIntHeader(name, value);
-            headers.put(name, Integer.toString(value));
-        }
-
-        @Override
-        public void addHeader(String name, String value) {
-            super.addHeader(name, value);
-            headers.put(name, value);
-        }
-
-        @Override
-        public void setHeader(String name, String value) {
-            super.setHeader(name, value);
-            headers.put(name, value);
-        }
-        
-        @Override
-        public void setIntHeader(String name, int value) {
-            super.setIntHeader(name, value);
-            headers.put(name, Integer.toString(value));
-        }
-
-        @Override
-        public void setDateHeader(String name, long date) {
-            super.setDateHeader(name, date);
-            headers.put(name, DateUtil.formatHttpDate(date));
-        }
-
-        public ServletOutputStream createOutputStream() throws IOException {
-            return sos == null ? new ServletOutputStream() {
-                @Override
-                public void write(int b) throws IOException {
-                    stream.write(b);
-                }
-            } : sos;
-        }
-
-        @Override
-        public ServletOutputStream getOutputStream() throws IOException {
-            if (sos == null) {
-                sos = createOutputStream();
-            }
-            return sos;
-        }
-
-        @Override
-        public PrintWriter getWriter() throws IOException {
-            sos = getOutputStream();
-            if (writer == null) {
-                writer = new PrintWriter(sos);
-            }
-            return writer;
-        }
-    }
-
+    @Override
     public void destroy() {
         transformCache.clear();
     }
@@ -355,9 +326,9 @@ public class ResourceTransformFilter implements Filter {
     private static class Response implements Serializable {
         private final String contentType;
         private final Map<String, String> headers;
-        private final String returnData;
+        private final byte[] returnData;
 
-        public Response(String contentType, Map<String,String> headers, String returnData) {
+        public Response(String contentType, Map<String,String> headers, byte[] returnData) {
             this.contentType = contentType;
             this.headers = headers;
             this.returnData = returnData;
@@ -371,7 +342,7 @@ public class ResourceTransformFilter implements Filter {
             return headers;
         }
 
-        public String getReturnData() {
+        public byte[] getReturnData() {//TODO: data should be binary, not text
             return returnData;
         }
 
@@ -423,12 +394,15 @@ public class ResourceTransformFilter implements Filter {
         final StringBuilder errors = new StringBuilder();
         try {
             JavaScriptCompressor javaScriptCompressor = new JavaScriptCompressor(new StringReader(data), new ErrorReporter() {
+                @Override
                 public void warning(String string, String string1, int i, String string2, int i1) {
                     errors.append(string).append(", ");
                 }
+                @Override
                 public void error(String string, String string1, int i, String string2, int i1) {
                     errors.append(string).append(", ");
                 }
+                @Override
                 public EvaluatorException runtimeError(String string, String string1, int i, String string2, int i1) {
                     errors.append(string).append(", ");
                     return new EvaluatorException(string);

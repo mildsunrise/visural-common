@@ -65,7 +65,7 @@ public class SQLQueryGridGenerator implements DataGridGenerator {
 
                 String sFieldName = rsmd.getColumnLabel(nC + 1);
                 boolean bRequired = false;
-                if (rsmd.isNullable(nC + 1) == rsmd.columnNoNulls) {
+                if (rsmd.isNullable(nC + 1) == ResultSetMetaData.columnNoNulls) {
                     bRequired = true;
                 }
 
@@ -155,26 +155,17 @@ public class SQLQueryGridGenerator implements DataGridGenerator {
         return sResult;
     }
 
-    /**
-     * 
-     * @return 
-     */
+    @Override
     public TableFormat getTableFormat() {
         return tfHeader;
     }
 
-    /**
-     * 
-     * @return 
-     */
+    @Override
     public ArrayList getRows() {
         return alRows;
     }
 
-    /**
-     * 
-     * @return 
-     */
+    @Override
     public boolean isReady() {
         return bIsReady;
     }
