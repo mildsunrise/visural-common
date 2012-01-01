@@ -1,7 +1,7 @@
 var lessIt = function(data, input, includes, compress, yuicompress, optlevel) {
     var result;
     var error;
-    
+
     new(less.Parser)({
         paths: includes,
         optimization: optlevel,
@@ -18,7 +18,7 @@ var lessIt = function(data, input, includes, compress, yuicompress, optlevel) {
             error = err;
         }
     });
-    
+
     if (error) {
         throw error;
     }
