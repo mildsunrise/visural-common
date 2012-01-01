@@ -60,6 +60,13 @@ import org.mozilla.javascript.EvaluatorException;
  */
 public class ResourceTransformFilter implements Filter {
     protected FilterConfig config;
+    
+    private LessCSS engine = null;
+
+    public LessCSS getEngine() {
+        if (engine==null) engine = LessCSS.newBundled();
+        return engine;
+    }
 
     //TODO FUTURE: implement LessCompressMethod, LessOptimization, InlineURITransform, CSSCompress, JSCompress, LessEngine, ...
 
@@ -158,7 +165,7 @@ public class ResourceTransformFilter implements Filter {
             OrigResponseWrapper wrap = new OrigResponseWrapper(res);
             fc.doFilter(req, wrap);
 
-            //If there was an error so the response is commited, return
+            //If the orig. response is commited (possibly because of a 404, etc.), return
             if (res.isCommitted()) return;
             
             //Decode the original data using the specified charset
@@ -220,8 +227,7 @@ public class ResourceTransformFilter implements Filter {
                         File rFile = null;
                         if (rPath != null) rFile = new File(rPath);
                         //Call the less method
-                        LessCSS engine = new LessCSS();
-                        data = engine.less(data, rFile, true, true, 2, null);
+                        data = getEngine().less(data, rFile, true, true, 2, null);
                         break;
 
                     default:
