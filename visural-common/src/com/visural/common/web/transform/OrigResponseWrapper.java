@@ -29,8 +29,9 @@ import java.util.Map;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponseWrapper;
 
-public class OrigResponseWrapper implements HttpServletResponse {
+public class OrigResponseWrapper extends HttpServletResponseWrapper {
 
     protected final HttpServletResponse origResponse;
     private ServletOutputStream sos = null;
@@ -42,6 +43,7 @@ public class OrigResponseWrapper implements HttpServletResponse {
     protected int clength = -1;
 
     public OrigResponseWrapper(HttpServletResponse original) {
+        super(original);
         origResponse = original;
     }
 
@@ -91,7 +93,6 @@ public class OrigResponseWrapper implements HttpServletResponse {
         sos = new ServletOutputStream() {
             @Override
             public void write(int b) throws IOException {
-                checkCommited();
                 stream.write(b);
             }
         };
@@ -116,26 +117,31 @@ public class OrigResponseWrapper implements HttpServletResponse {
     @Deprecated
     @Override
     public void setStatus(int i, String string) {
+        checkCommited();
         origResponse.setStatus(i, string);
     }
 
     @Override
     public void setStatus(int i) {
+        checkCommited();
         origResponse.setStatus(i);
     }
 
     @Override
     public void sendRedirect(String string) throws IOException {
+        checkCommited();
         origResponse.sendRedirect(string);
     }
 
     @Override
     public void sendError(int i) throws IOException {
+        checkCommited();
         origResponse.sendError(i);
     }
 
     @Override
     public void sendError(int i, String string) throws IOException {
+        checkCommited();
         origResponse.sendError(i, string);
     }
 
@@ -163,21 +169,21 @@ public class OrigResponseWrapper implements HttpServletResponse {
     @Override
     public void setBufferSize(int size) {
         checkCommited();
-        if (stream == null) {
-            stream = new ByteArrayOutputStream(size);
-        }
+        stream = new ByteArrayOutputStream(size);
+        bSize = size;
     }
 
+    protected int bSize = 32;
+    
     @Override
     public int getBufferSize() {
-        if (stream == null) {
-            return 0;
-        }
-        return stream.size();
+        return bSize;
     }
 
+    protected boolean commited = false;
     @Override
     public void flushBuffer() throws IOException {
+        commited=true;
     }
     
     public void checkCommited() throws IllegalStateException {
@@ -194,7 +200,7 @@ public class OrigResponseWrapper implements HttpServletResponse {
 
     @Override
     public boolean isCommitted() {
-        return origResponse.isCommitted();
+        return origResponse.isCommitted() || commited || (stream != null && stream.size() > 0);
     }
 
     @Override
