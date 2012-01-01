@@ -52,6 +52,7 @@
 
     <target name="-pre-init">
         <property environment="env"/>
+        <property file="version.properties"/>
         <if>
             <equals arg1="${env.RELEASE_NUMBER}" arg2="$${env.RELEASE_NUMBER}" />
             <then>
