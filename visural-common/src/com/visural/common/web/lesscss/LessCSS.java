@@ -27,6 +27,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.mozilla.javascript.Callable;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
@@ -34,38 +36,52 @@ import org.mozilla.javascript.ScriptableObject;
 
 public class LessCSS {
 
-    public final static String LESSJS_LOCATION =
-            "com/visural/common/web/lesscss/less.js";
+    public final static String LESSJS_LOCATION = "less.js";
+    public final static String RUNJS_LOCATION = "run.js";
     public final static String BUNDLED_CHARSET = "UTF-8";
 
 
-    private final Context c;
     private final ScriptableObject so;
 
     /**
      * Initializes a new Less.JS engine from the given scriptfile.
      **/
-    public LessCSS(Reader lessjs) {
+    public LessCSS(Reader lessjs) throws IOException {
+        InputStream runjs = null;
+        Context c = null;
         try {
-            InputStream runjs = getClass().getClassLoader().getResourceAsStream("com/visural/common/web/lesscss/run.js");
+            runjs = getClass().getResourceAsStream(RUNJS_LOCATION);
             c = new ContextFactory().enterContext();
-            so = c.initStandardObjects();
             c.setOptimizationLevel(9);
+            so = c.initStandardObjects();
             //FIXME: check if eval went well
             c.evaluateReader(so, lessjs, "less.js", 1, null);
-            c.evaluateReader(so, new InputStreamReader(runjs), "run.js", 1, null);
+            c.evaluateReader(so, new InputStreamReader(runjs, BUNDLED_CHARSET), "run.js", 1, null);
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed reading javascript less.js", ex);
+            throw new IOException("Failed reading javascript less.js", ex);
+        } finally {
+            if (runjs != null) IOUtil.closeQuietly(runjs);
+            if (c != null) Context.exit();
         }
     }
 
     /**
-     * Initializes a new Less.JS engine (bundled).
+     * Initializes and returns a new Less.JS engine (bundled).
      **/
-    public LessCSS() {
-        this(new InputStreamReader(
+    public static LessCSS newBundled() {
+        Reader r = null;
+        try {
+            r = new InputStreamReader(
                 LessCSS.class.getResourceAsStream(LESSJS_LOCATION),
-                Charset.forName(BUNDLED_CHARSET)));
+                Charset.forName(BUNDLED_CHARSET));
+            return new LessCSS(r);
+        } catch (IOException ex) {
+            //We're reading from a bundled file,
+            //so there shouldn't be any I/O exception.
+            throw new RuntimeException(ex);
+        } finally {
+            if (r != null) IOUtil.closeQuietly(r);
+        }
     }
 
     public String lessFile(File file, boolean compress, boolean yuicompress,
@@ -91,20 +107,31 @@ public class LessCSS {
      **/
     public String less(String data, File file, boolean compress, boolean yuicompress,
                        int optimization, List<File> includes) {
-        if (includes == null) includes = new ArrayList<File>();
-        
-        String path = "-";
-        if (file != null) {
-            path = file.getPath();
-            includes.add(file.getParentFile());
-        }
+        Context c = null;
+        try {
+            c = new ContextFactory().enterContext();
+            if (includes == null) includes = new ArrayList<File>();
 
-        Object[] args = {data, path,
-                         c.newArray(so, includes.toArray()),
-                         compress, yuicompress, optimization};
+            String path = "-";
+            if (file != null) {
+                path = file.getAbsolutePath();
+                includes.add(file.getParentFile());
+            }
+
+            Object[] incl = new Object[includes.size()];
+            for (int i = 0; i < incl.length; i++) {
+                incl[i] = includes.get(i).getAbsolutePath();
+            }
+
+            Object[] args = {data, path,
+                             c.newArray(so, incl),
+                             compress, yuicompress, optimization};
         
-        Callable func = (Callable) so.get("lessIt", so);
-        return (String) func.call(c, so, null, args);//TODO: catch
+            Callable func = (Callable) so.get("lessIt", so);
+            return (String) func.call(c, so, null, args);//TODO: catch
+        } finally {
+            Context.exit();
+        }
     }
     
     public String lessData(String data, boolean compress, boolean yuicompress,
@@ -121,7 +148,7 @@ public class LessCSS {
         File src = new File(args[0]);
         File dst = new File(args[1]);
 
-        LessCSS less = new LessCSS();
+        LessCSS less = LessCSS.newBundled();
         String result = less.lessFile(src, true,true, 1, null);
         IOUtil.stringToFile(dst, result);
     }
